@@ -29,9 +29,11 @@ st.markdown(
 
 TRANSACTIONS_FILE = "mandi_commission_sales.csv"
 PAYMENTS_FILE = "mandi_payments.csv"
+CUSTOMERS_FILE = "customers_list.csv"
 
+# File initializations
 if not os.path.exists(TRANSACTIONS_FILE):
-  df_tx = pd.DataFrame(
+  pd.DataFrame(
       columns=[
           "Date",
           "Customer",
@@ -48,22 +50,26 @@ if not os.path.exists(TRANSACTIONS_FILE):
           "Net_Bill_Amount",
           "Remarks",
       ]
-  )
-  df_tx.to_csv(TRANSACTIONS_FILE, index=False)
+  ).to_csv(TRANSACTIONS_FILE, index=False)
 
 if not os.path.exists(PAYMENTS_FILE):
-  df_pay = pd.DataFrame(
+  pd.DataFrame(
       columns=["Date", "Customer", "Amount_Paid", "Payment_Mode", "Remarks"]
+  ).to_csv(PAYMENTS_FILE, index=False)
+
+if not os.path.exists(CUSTOMERS_FILE):
+  pd.DataFrame(columns=["Customer_Name", "Phone"]).to_csv(
+      CUSTOMERS_FILE, index=False
   )
-  df_pay.to_csv(PAYMENTS_FILE, index=False)
 
 st.title("🏢 SHIVA TRADERS")
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📑 नया बिल (New Bill)",
+    "👥 ग्राहक जोड़ें (Add Customer)",
     "💵 जमा पैसा (Payment Entry)",
     "🖨️ पर्ची प्रिंट (Print Bill)",
-    "📊 पूरा रजिस्टर (All Summary)",
+    "📊 पूरा रजिस्टर (Summary)",
 ])
 
 # ==========================================
@@ -72,41 +78,49 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
   st.subheader("1. नया बिल और आढ़त entries")
 
-  df_tx_all = (
-      pd.read_csv(TRANSACTIONS_FILE)
-      if os.path.exists(TRANSACTIONS_FILE)
-      else pd.DataFrame()
+  # Load saved customer master list
+  df_cust_list = (
+      pd.read_csv(CUSTOMERS_FILE)
+      if os.path.exists(CUSTOMERS_FILE)
+      else pd.DataFrame(columns=["Customer_Name", "Phone"])
   )
-  existing_customers = (
-      sorted(df_tx_all["Customer"].dropna().unique().tolist())
-      if not df_tx_all.empty and "Customer" in df_tx_all.columns
+  saved_customers = (
+      sorted(df_cust_list["Customer_Name"].dropna().unique().tolist())
+      if not df_cust_list.empty and "Customer_Name" in df_cust_list.columns
       else []
   )
 
   col1, col2, col3 = st.columns(3)
 
   with col1:
-    cust_mode = st.radio(
-        "ग्राहक का प्रकार:",
-        ["पुराना ग्राहक (Existing)", "नया ग्राहक (New)"],
-        horizontal=True,
-    )
-
-    if cust_mode == "पुराना ग्राहक (Existing)" and existing_customers:
-      cust_name = st.selectbox("सूची से ग्राहक चुनें:", existing_customers)
-      last_phone = ""
-      if not df_tx_all.empty:
-        cust_rows = df_tx_all[df_tx_all["Customer"] == cust_name]
-        if not cust_rows.empty and "Phone" in cust_rows.columns:
-          valid_phones = cust_rows["Phone"].dropna()
-          if not valid_phones.empty:
-            last_phone = str(valid_phones.iloc[-1])
-      cust_phone = st.text_input(
-          "फोन नंबर (WhatsApp / SMS):", value=last_phone
-      ).strip()
+    if saved_customers:
+      cust_choice = st.selectbox(
+          "सेव किए गए ग्राहक चुनें:", ["-- नया नाम टाइप करें --"] + saved_customers
+      )
     else:
-      cust_name = st.text_input("नया ग्राहक / पार्टी का नाम:").strip()
+      cust_choice = "-- नया नाम टाइप करें --"
+      st.info(
+          "⚠️ कोई ग्राहक सेव नहीं है। पहले 'ग्राहक जोड़ें' टैब से नाम सेव कर"
+          " सकते हैं।"
+      )
+
+    if cust_choice == "-- नया नाम टाइप करें --":
+      cust_name = st.text_input("ग्राहक / पार्टी का नाम:").strip()
       cust_phone = st.text_input("फोन नंबर (WhatsApp / SMS):").strip()
+    else:
+      cust_name = cust_choice
+      # Fetch phone from master list
+      matched_rows = df_cust_list[
+          df_cust_list["Customer_Name"] == cust_name
+      ]
+      default_phone = (
+          str(matched_rows["Phone"].iloc[0])
+          if not matched_rows.empty and pd.notna(matched_rows["Phone"].iloc[0])
+          else ""
+      )
+      cust_phone = st.text_input(
+          "फोन नंबर (WhatsApp / SMS):", value=default_phone
+      ).strip()
 
     variety = st.text_input("आइटम / विवरण:", value="3797")
 
@@ -168,6 +182,14 @@ with tab1:
           "Remarks": remarks,
       }])
       new_data.to_csv(TRANSACTIONS_FILE, mode="a", header=False, index=False)
+
+      # Automatically add to customer master list if not already present
+      if cust_name not in saved_customers:
+        new_cust_df = pd.DataFrame(
+            [{"Customer_Name": cust_name, "Phone": cust_phone}]
+        )
+        new_cust_df.to_csv(CUSTOMERS_FILE, mode="a", header=False, index=False)
+
       st.success(f"✅ {cust_name} का बिल सेव हो गया!")
 
       if cust_phone:
@@ -183,11 +205,48 @@ with tab1:
         st.markdown(f"[👉 Click Here to Send WhatsApp Message]({wa_url})")
 
 # ==========================================
-# TAB 2: PAYMENT ENTRY
+# TAB 2: ADD CUSTOMER
 # ==========================================
 with tab2:
-  st.subheader("2. ग्राहक से जमा पैसा (Payment Entry)")
+  st.subheader("2. नया ग्राहक और फोन नंबर सेव करें")
+  new_c_name = st.text_input("ग्राहक का पूरा नाम:").strip()
+  new_c_phone = st.text_input("मोबाइल नंबर (WhatsApp):").strip()
 
+  if st.button("ग्राहक सेव करें", type="primary"):
+    if not new_c_name:
+      st.error("कृपया ग्राहक का नाम दर्ज करें!")
+    else:
+      df_c = (
+          pd.read_csv(CUSTOMERS_FILE)
+          if os.path.exists(CUSTOMERS_FILE)
+          else pd.DataFrame(columns=["Customer_Name", "Phone"])
+      )
+      if (
+          not df_c.empty
+          and "Customer_Name" in df_c.columns
+          and new_c_name in df_c["Customer_Name"].values
+      ):
+        st.warning("यह ग्राहक पहले से सूची में मौजूद है!")
+      else:
+        new_row = pd.DataFrame(
+            [{"Customer_Name": new_c_name, "Phone": new_c_phone}]
+        )
+        new_row.to_csv(CUSTOMERS_FILE, mode="a", header=False, index=False)
+        st.success(f"✅ '{new_c_name}' सफलतापूर्वक सेव हो गया!")
+
+  st.markdown("### 📋 वर्तमान में सेव सभी ग्राहक:")
+  if os.path.exists(CUSTOMERS_FILE):
+    df_show_cust = pd.read_csv(CUSTOMERS_FILE)
+    if not df_show_cust.empty:
+      st.dataframe(df_show_cust, use_container_width=True)
+    else:
+      st.info("अभी कोई ग्राहक सेव नहीं है।")
+
+# ==========================================
+# TAB 3: PAYMENT ENTRY
+# ==========================================
+with tab3:
+  st.subheader("3. ग्राहक से जमा पैसा (Payment Entry)")
   df_tx = (
       pd.read_csv(TRANSACTIONS_FILE)
       if os.path.exists(TRANSACTIONS_FILE)
@@ -222,14 +281,13 @@ with tab2:
           f"✅ ₹{pay_amount} की जमा एंट्री हो गई! (पार्टी: {pay_cust})"
       )
   else:
-    st.info("अभी तक कोई पार्टी दर्ज नहीं है।")
+    st.info("अभी तक कोई ट्रांजेक्शन दर्ज नहीं है।")
 
 # ==========================================
-# TAB 3: PRINT PARCHI
+# TAB 4: PRINT PARCHI
 # ==========================================
-with tab3:
-  st.subheader("3. ग्राहक पर्ची व बिल प्रिंट")
-
+with tab4:
+  st.subheader("4. ग्राहक पर्ची व बिल प्रिंट")
   df_tx = (
       pd.read_csv(TRANSACTIONS_FILE)
       if os.path.exists(TRANSACTIONS_FILE)
@@ -251,7 +309,6 @@ with tab3:
     selected_cust = st.selectbox(
         "जिस ग्राहक की पर्ची प्रिंट करनी है चुनें:", existing_customers
     )
-
     cust_sales = (
         df_tx[df_tx["Customer"] == selected_cust]
         if not df_tx.empty and "Customer" in df_tx.columns
@@ -281,7 +338,6 @@ with tab3:
     m4.metric("📈 इस पार्टी से कुल प्रॉफिट", f"₹{total_profit_earned:,.2f}")
 
     st.markdown("---")
-
     sales_rows = ""
     if not cust_sales.empty:
       for idx, row in cust_sales.iterrows():
@@ -383,11 +439,10 @@ with tab3:
     st.info("प्रिंट करने के लिए कोई डाटा नहीं है।")
 
 # ==========================================
-# TAB 4: REGISTER SUMMARY
+# TAB 5: REGISTER SUMMARY
 # ==========================================
-with tab4:
-  st.subheader("4. Shiva Traders खाता रजिस्टर (Summary)")
-
+with tab5:
+  st.subheader("5. Shiva Traders खाता रजिस्टर (Summary)")
   df_tx = (
       pd.read_csv(TRANSACTIONS_FILE)
       if os.path.exists(TRANSACTIONS_FILE)
@@ -396,7 +451,6 @@ with tab4:
 
   if not df_tx.empty and "Customer" in df_tx.columns:
     summary_rows_html = ""
-
     grand_bags = 0
     grand_weight = 0.0
     grand_gross = 0.0
@@ -441,68 +495,3 @@ with tab4:
                 <td>{cust_weight}</td>
                 <td>-</td>
                 <td>₹{cust_gross:,.2f}</td>
-                <td>₹{cust_comm:,.2f}</td>
-                <td>₹{cust_labour:,.2f}</td>
-                <td style="color:#16a34a;">₹{(cust_comm + cust_labour):,.2f}</td>
-                <td style="color:#1d4ed8;">₹{cust_net:,.2f}</td>
-            </tr>
-            """
-
-    html_all_register = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; padding: 10px; color: #000000; background-color: #ffffff; }}
-                .register-box {{ border: 2px solid #1e3a8a; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; }}
-                .header-title {{ text-align: center; color: #1e3a8a; font-size: 24px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }}
-                .reg-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
-                .reg-table th, .reg-table td {{ border: 1px solid #475569; padding: 6px; text-align: center; font-size: 13px; color: #000000; }}
-                .reg-table th {{ background-color: #2563eb; color: #ffffff; font-weight: bold; }}
-                .grand-total {{ background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: bold; }}
-                .btn-print {{ background-color: #2563eb; color: #ffffff; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 15px; }}
-                @media print {{ .btn-print {{ display: none; }} }}
-            </style>
-        </head>
-        <body>
-            <button class="btn-print" onclick="window.print()">🖨️ पूरा रजिस्टर Print / PDF निकालें</button>
-            <div class="register-box">
-                <div class="header-title">SHIVA TRADERS</div>
-                <p style="text-align:right; font-size:13px; color:#475569;"><b>Report Date:</b> {datetime.now().strftime("%d-%m-%Y %H:%M")}</p>
-                
-                <table class="reg-table">
-                    <thead>
-                        <tr>
-                            <th>पार्टी का नाम</th>
-                            <th>बोरी</th>
-                            <th>वजन (Kg)</th>
-                            <th>रेट (₹)</th>
-                            <th>मूल रकम</th>
-                            <th>कमीशन (₹)</th>
-                            <th>मजदूरी (₹)</th>
-                            <th>कुल प्रॉफिट (₹)</th>
-                            <th>अंतिम बिल (₹)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {summary_rows_html}
-                        <tr class="grand-total">
-                            <td style="text-align:left; color:#facc15;">GRAND TOTAL</td>
-                            <td>{grand_bags}</td>
-                            <td>{grand_weight}</td>
-                            <td>-</td>
-                            <td>₹{grand_gross:,.2f}</td>
-                            <td>₹{grand_comm:,.2f}</td>
-                            <td>₹{grand_labour:,.2f}</td>
-                            <td style="color:#4ade80;">₹{(grand_comm + grand_labour):,.2f}</td>
-                            <td style="color:#60a5fa;">₹{grand_net:,.2f}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </body>
-        </html>
-        """
-    st.components.v1.html(html_all_register, height=800, scrolling=True)
-  else:
-    st.info("रजिस्टर में दिखाने के लिए अभी कोई डेटा नहीं है।")
