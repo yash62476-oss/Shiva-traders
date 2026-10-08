@@ -1,3 +1,18 @@
+# Mobile pull-to-refresh rokne ke liye JavaScript trick
+st.markdown(
+    """
+    <script>
+    document.body.style.overscrollBehaviorY = 'none';
+    window.addEventListener('touchmove', function(e) {
+        // Agar page top par hai aur user aur upar khich raha hai toh default roko
+        if (window.pageYOffset <= 0 && e.scale !== 1) {
+            // allow normal scrolling inside containers
+        }
+    }, { passive: false });
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
 from datetime import datetime
 import os
 import urllib.parse
