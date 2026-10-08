@@ -1,18 +1,3 @@
-# Mobile pull-to-refresh rokne ke liye JavaScript trick
-st.markdown(
-    """
-    <script>
-    document.body.style.overscrollBehaviorY = 'none';
-    window.addEventListener('touchmove', function(e) {
-        // Agar page top par hai aur user aur upar khich raha hai toh default roko
-        if (window.pageYOffset <= 0 && e.scale !== 1) {
-            // allow normal scrolling inside containers
-        }
-    }, { passive: false });
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
 from datetime import datetime
 import os
 import urllib.parse
@@ -22,11 +7,12 @@ import streamlit as st
 # Page Configuration
 st.set_page_config(page_title="Shiva Traders", page_icon="🏢", layout="wide")
 
-# High-Contrast Styling
+# High-Contrast Styling & Mobile Scroll/Refresh Fix
 st.markdown(
     """
     <style>
-    .stApp { background-color: #0f172a !important; color: #ffffff !important; }
+    .stApp { background-color: #0f172a !important; color: #ffffff !important; overscroll-behavior-y: none !important; }
+    html, body { overscroll-behavior-y: none !important; }
     label, label p, div[data-testid="stMarkdownContainer"] p { color: #ffffff !important; font-size: 16px !important; font-weight: 700 !important; }
     h1, h2, h3, h4, .stSubheader { color: #38bdf8 !important; font-weight: 800 !important; }
     input { color: #ffffff !important; background-color: #1e293b !important; border: 1px solid #64748b !important; border-radius: 6px !important; }
@@ -86,7 +72,6 @@ tab1, tab2, tab3, tab4 = st.tabs([
 with tab1:
   st.subheader("1. नया बिल और आढ़त entries")
 
-  # Load existing transactions to fetch previous customers
   df_tx_all = (
       pd.read_csv(TRANSACTIONS_FILE)
       if os.path.exists(TRANSACTIONS_FILE)
@@ -109,7 +94,6 @@ with tab1:
 
     if cust_mode == "पुराना ग्राहक (Existing)" and existing_customers:
       cust_name = st.selectbox("सूची से ग्राहक चुनें:", existing_customers)
-      # Fetch last used phone number for this customer automatically
       last_phone = ""
       if not df_tx_all.empty:
         cust_rows = df_tx_all[df_tx_all["Customer"] == cust_name]
@@ -186,7 +170,6 @@ with tab1:
       new_data.to_csv(TRANSACTIONS_FILE, mode="a", header=False, index=False)
       st.success(f"✅ {cust_name} का बिल सेव हो गया!")
 
-      # WhatsApp Link Generation
       if cust_phone:
         clean_phone = "".join(filter(str.isdigit, str(cust_phone)))
         if len(clean_phone) == 10:
@@ -205,7 +188,11 @@ with tab1:
 with tab2:
   st.subheader("2. ग्राहक से जमा पैसा (Payment Entry)")
 
-  df_tx = pd.read_csv(TRANSACTIONS_FILE) if os.path.exists(TRANSACTIONS_FILE) else pd.DataFrame()
+  df_tx = (
+      pd.read_csv(TRANSACTIONS_FILE)
+      if os.path.exists(TRANSACTIONS_FILE)
+      else pd.DataFrame()
+  )
   existing_customers = (
       sorted(df_tx["Customer"].dropna().unique().tolist())
       if not df_tx.empty and "Customer" in df_tx.columns
@@ -243,8 +230,16 @@ with tab2:
 with tab3:
   st.subheader("3. ग्राहक पर्ची व बिल प्रिंट")
 
-  df_tx = pd.read_csv(TRANSACTIONS_FILE) if os.path.exists(TRANSACTIONS_FILE) else pd.DataFrame()
-  df_pay = pd.read_csv(PAYMENTS_FILE) if os.path.exists(PAYMENTS_FILE) else pd.DataFrame()
+  df_tx = (
+      pd.read_csv(TRANSACTIONS_FILE)
+      if os.path.exists(TRANSACTIONS_FILE)
+      else pd.DataFrame()
+  )
+  df_pay = (
+      pd.read_csv(PAYMENTS_FILE)
+      if os.path.exists(PAYMENTS_FILE)
+      else pd.DataFrame()
+  )
 
   existing_customers = (
       sorted(df_tx["Customer"].dropna().unique().tolist())
@@ -393,7 +388,11 @@ with tab3:
 with tab4:
   st.subheader("4. Shiva Traders खाता रजिस्टर (Summary)")
 
-  df_tx = pd.read_csv(TRANSACTIONS_FILE) if os.path.exists(TRANSACTIONS_FILE) else pd.DataFrame()
+  df_tx = (
+      pd.read_csv(TRANSACTIONS_FILE)
+      if os.path.exists(TRANSACTIONS_FILE)
+      else pd.DataFrame()
+  )
 
   if not df_tx.empty and "Customer" in df_tx.columns:
     summary_rows_html = ""
@@ -482,7 +481,7 @@ with tab4:
                             <th>कमीशन (₹)</th>
                             <th>मजदूरी (₹)</th>
                             <th>कुल प्रॉफिट (₹)</th>
-                            <th>अंतिम बिल बनाते वक्त</th>
+                            <th>अंतिम बिल (₹)</th>
                         </tr>
                     </thead>
                     <tbody>
