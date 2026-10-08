@@ -495,3 +495,68 @@ with tab5:
                 <td>{cust_weight}</td>
                 <td>-</td>
                 <td>₹{cust_gross:,.2f}</td>
+                <td>₹{cust_comm:,.2f}</td>
+                <td>₹{cust_labour:,.2f}</td>
+                <td style="color:#16a34a;">₹{(cust_comm + cust_labour):,.2f}</td>
+                <td style="color:#1d4ed8;">₹{cust_net:,.2f}</td>
+            </tr>
+            """
+
+    html_all_register = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; padding: 10px; color: #000000; background-color: #ffffff; }}
+                .register-box {{ border: 2px solid #1e3a8a; padding: 15px; border-radius: 8px; width: 100%; box-sizing: border-box; }}
+                .header-title {{ text-align: center; color: #1e3a8a; font-size: 24px; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }}
+                .reg-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+                .reg-table th, .reg-table td {{ border: 1px solid #475569; padding: 6px; text-align: center; font-size: 13px; color: #000000; }}
+                .reg-table th {{ background-color: #2563eb; color: #ffffff; font-weight: bold; }}
+                .grand-total {{ background-color: #0f172a; color: #ffffff; font-size: 14px; font-weight: bold; }}
+                .btn-print {{ background-color: #2563eb; color: #ffffff; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; margin-bottom: 15px; }}
+                @media print {{ .btn-print {{ display: none; }} }}
+            </style>
+        </head>
+        <body>
+            <button class="btn-print" onclick="window.print()">🖨️ पूरा रजिस्टर Print / PDF निकालें</button>
+            <div class="register-box">
+                <div class="header-title">SHIVA TRADERS</div>
+                <p style="text-align:right; font-size:13px; color:#475569;"><b>Report Date:</b> {datetime.now().strftime("%d-%m-%Y %H:%M")}</p>
+                
+                <table class="reg-table">
+                    <thead>
+                        <tr>
+                            <th>पार्टी का नाम</th>
+                            <th>बोरी</th>
+                            <th>वजन (Kg)</th>
+                            <th>रेट (₹)</th>
+                            <th>मूल रकम</th>
+                            <th>कमीशन (₹)</th>
+                            <th>मजदूरी (₹)</th>
+                            <th>कुल प्रॉफिट (₹)</th>
+                            <th>अंतिम बिल (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {summary_rows_html}
+                        <tr class="grand-total">
+                            <td style="text-align:left; color:#facc15;">GRAND TOTAL</td>
+                            <td>{grand_bags}</td>
+                            <td>{grand_weight}</td>
+                            <td>-</td>
+                            <td>₹{grand_gross:,.2f}</td>
+                            <td>₹{grand_comm:,.2f}</td>
+                            <td>₹{grand_labour:,.2f}</td>
+                            <td style="color:#4ade80;">₹{(grand_comm + grand_labour):,.2f}</td>
+                            <td style="color:#60a5fa;">₹{grand_net:,.2f}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </body>
+        </html>
+        """
+    st.components.v1.html(html_all_register, height=800, scrolling=True)
+  else:
+    st.info("रजिस्टर में दिखाने के लिए अभी कोई डेटा नहीं है।")
