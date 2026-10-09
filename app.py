@@ -73,12 +73,11 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: NEW BILL
+# TAB 1: NEW BILL (साथ में Front Payment Option)
 # ==========================================
 with tab1:
   st.subheader("1. नया बिल और आढ़त entries")
 
-  # Load saved customer master list
   df_cust_list = (
       pd.read_csv(CUSTOMERS_FILE)
       if os.path.exists(CUSTOMERS_FILE)
@@ -99,17 +98,13 @@ with tab1:
       )
     else:
       cust_choice = "-- नया नाम टाइप करें --"
-      st.info(
-          "⚠️ कोई ग्राहक सेव नहीं है। पहले 'ग्राहक जोड़ें' टैब से नाम सेव कर"
-          " सकते हैं।"
-      )
+      st.info("⚠️ कोई ग्राहक सेव नहीं है।")
 
     if cust_choice == "-- नया नाम टाइप करें --":
       cust_name = st.text_input("ग्राहक / पार्टी का नाम:").strip()
       cust_phone = st.text_input("फोन नंबर (WhatsApp / SMS):").strip()
     else:
       cust_name = cust_choice
-      # Fetch phone from master list
       matched_rows = df_cust_list[
           df_cust_list["Customer_Name"] == cust_name
       ]
@@ -151,7 +146,22 @@ with tab1:
   net_bill_amount = gross_amount + total_profit
 
   st.markdown("---")
-  st.subheader("📊 हिसाब-किताब breakdown:")
+  st.subheader("📊 हिसाब-किताब breakdown & Front Payment:")
+
+  # FRONT PAYMENT OPTION (Bill ke sath hi paise jama karne ke liye)
+  p_col1, p_col2 = st.columns(2)
+  with p_col1:
+    instant_pay = st.number_input(
+        "हाथ-हाथ मिले पैसे (₹) [Agar kuch payment abhi mili hai]:",
+        min_value=0.0,
+        value=0.0,
+        step=100.0,
+    )
+  with p_col2:
+    pay_mode_front = st.selectbox(
+        "पेमेंट माध्यम:",
+        ["Cash (नकद)", "UPI / PhonePe", "Bank Transfer", "Cheque"],
+    )
 
   c1, c2, c3, c4 = st.columns(4)
   c1.metric("मूल रकम (Gross)", f"₹{gross_amount:,.2f}")
@@ -161,10 +171,11 @@ with tab1:
 
   st.markdown(f"## 💸 Party Net Bill Amount: ₹{net_bill_amount:,.2f}")
 
-  if st.button("पर्ची सेव करें (Save Bill)", type="primary"):
+  if st.button("पर्ची सेव करें (Save Bill & Payment)", type="primary"):
     if not cust_name:
       st.error("कृपया ग्राहक का नाम भरें!")
     else:
+      # 1. Save Transaction
       new_data = pd.DataFrame([{
           "Date": datetime.now().strftime("%Y-%m-%d %H:%M"),
           "Customer": cust_name,
@@ -183,21 +194,34 @@ with tab1:
       }])
       new_data.to_csv(TRANSACTIONS_FILE, mode="a", header=False, index=False)
 
-      # Automatically add to customer master list if not already present
+      # 2. Save Instant Payment if amount > 0
+      if instant_pay > 0:
+        new_pay = pd.DataFrame([{
+            "Date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "Customer": cust_name,
+            "Amount_Paid": instant_pay,
+            "Payment_Mode": pay_mode_front,
+            "Remarks": "Bill ke sath front payment",
+        }])
+        new_pay.to_csv(PAYMENTS_FILE, mode="a", header=False, index=False)
+
+      # 3. Add to Customer Master List if new
       if cust_name not in saved_customers:
         new_cust_df = pd.DataFrame(
             [{"Customer_Name": cust_name, "Phone": cust_phone}]
         )
         new_cust_df.to_csv(CUSTOMERS_FILE, mode="a", header=False, index=False)
 
-      st.success(f"✅ {cust_name} का बिल सेव हो गया!")
+      st.success(
+          f"✅ {cust_name} ka bill aur payment safaltapurvak save ho gaya!"
+      )
 
       if cust_phone:
         clean_phone = "".join(filter(str.isdigit, str(cust_phone)))
         if len(clean_phone) == 10:
           clean_phone = "91" + clean_phone
 
-        sms_text = f"🏢 *SHIVA TRADERS*\n\nNamaste {cust_name} ji,\nAapka naya bill generate ho gaya hai:\n\n• Item: {variety}\n• Bori: {bags}\n• Wt: {weight_kg} kg\n• Rate: ₹{rate_kg}/kg\n• Total Bill: ₹{net_bill_amount:,.2f}\n\nDhanyawad!"
+        sms_text = f"🏢 *SHIVA TRADERS*\n\nNamaste {cust_name} ji,\nAapka bill generate ho gaya hai:\n• Total Bill: ₹{net_bill_amount:,.2f}\n• Jama kiye: ₹{instant_pay:,.2f}\n\nDhanyawad!"
         encoded_msg = urllib.parse.quote(sms_text)
         wa_url = f"https://wa.me/{clean_phone}?text={encoded_msg}"
 
@@ -259,16 +283,22 @@ with tab3:
   )
 
   if existing_customers:
-    pay_cust = st.selectbox("ग्राहक चुनें:", existing_customers)
+    pay_cust = st.selectbox("ग्राहक चुनें:", existing_customers, key="p_cust")
     pay_amount = st.number_input(
-        "कितने पैसे मिले (₹):", min_value=1.0, value=1000.0, step=100.0
+        "कितने पैसे मिले (₹):",
+        min_value=1.0,
+        value=1000.0,
+        step=100.0,
+        key="p_amt",
     )
     pay_mode = st.selectbox(
-        "माध्यम:", ["Cash (नकद)", "UPI / PhonePe", "Bank Transfer", "Cheque"]
+        "माध्यम:",
+        ["Cash (नकद)", "UPI / PhonePe", "Bank Transfer", "Cheque"],
+        key="p_mode",
     )
-    pay_remark = st.text_input("नोट / टिप्पणी:")
+    pay_remark = st.text_input("नोट / टिप्पणी:", key="p_rem")
 
-    if st.button("पेमेंट सेव करें", type="primary"):
+    if st.button("पेमेंट सेव करें", type="primary", key="p_btn"):
       new_pay = pd.DataFrame([{
           "Date": datetime.now().strftime("%Y-%m-%d %H:%M"),
           "Customer": pay_cust,
@@ -307,7 +337,9 @@ with tab4:
 
   if existing_customers:
     selected_cust = st.selectbox(
-        "जिस ग्राहक की पर्ची प्रिंट करनी है चुनें:", existing_customers
+        "जिस ग्राहक की पर्ची प्रिंट करनी है चुनें:",
+        existing_customers,
+        key="print_cust",
     )
     cust_sales = (
         df_tx[df_tx["Customer"] == selected_cust]
