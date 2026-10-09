@@ -5,12 +5,10 @@ Run:  streamlit run shiva_traders_app.py
 
 from __future__ import annotations
 
-import hmac
 import html
 import io
 import os
 import shutil
-import time
 import urllib.parse
 import zipfile
 from datetime import date, datetime, timedelta
@@ -113,6 +111,62 @@ st.markdown(
     [data-testid="stExpander"] { border:1px solid #4c1d95 !important; border-radius:10px !important; background:rgba(76,29,149,.12); }
     [data-testid="stDataFrame"], [data-testid="stDataEditor"] { border:1px solid #1d4ed8; border-radius:10px; overflow:hidden; }
     hr { border-color:#312e81 !important; }
+
+    /* ================= ANIMATIONS ================= */
+    @keyframes gradientShift { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+    @keyframes popIn    { from{opacity:0; transform:translateY(18px) scale(.94);} to{opacity:1; transform:translateY(0) scale(1);} }
+    @keyframes fadeUp   { from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:translateY(0);} }
+    @keyframes slideIn  { from{opacity:0; transform:translateX(-24px);} to{opacity:1; transform:translateX(0);} }
+    @keyframes shine    { from{left:-120%;} to{left:160%;} }
+    @keyframes pulseGlow{ 0%,100%{box-shadow:0 4px 15px rgba(16,185,129,.35);} 50%{box-shadow:0 4px 30px rgba(16,185,129,.95);} }
+    @keyframes tabGlow  { 0%,100%{filter:brightness(1);} 50%{filter:brightness(1.18);} }
+    @keyframes floaty   { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+    @keyframes lineGrow { from{background-size:0% 3px;} to{background-size:100% 3px;} }
+
+    /* moving rainbow title */
+    h1 { background-size:300% 100% !important; animation:gradientShift 6s ease infinite, floaty 4s ease-in-out infinite; }
+
+    /* animated underline under sub-headings */
+    h3 { border-bottom:none !important; border-image:none !important;
+         background:linear-gradient(90deg,#22d3ee,#a78bfa,#f472b6) no-repeat left bottom / 100% 3px;
+         animation:lineGrow 1s ease-out; }
+
+    /* tab content slides up when you switch tabs */
+    [data-baseweb="tab-panel"] { animation:fadeUp .45s ease-out; }
+
+    /* selected tab breathes */
+    button[data-baseweb="tab"][aria-selected="true"] { animation:tabGlow 2.6s ease-in-out infinite; }
+
+    /* metric cards pop in one after another */
+    [data-testid="stMetric"] { animation:popIn .6s cubic-bezier(.2,.8,.2,1) backwards; }
+    [data-testid="stColumn"]:nth-child(2) [data-testid="stMetric"], [data-testid="column"]:nth-child(2) [data-testid="stMetric"] { animation-delay:.08s; }
+    [data-testid="stColumn"]:nth-child(3) [data-testid="stMetric"], [data-testid="column"]:nth-child(3) [data-testid="stMetric"] { animation-delay:.16s; }
+    [data-testid="stColumn"]:nth-child(4) [data-testid="stMetric"], [data-testid="column"]:nth-child(4) [data-testid="stMetric"] { animation-delay:.24s; }
+    [data-testid="stColumn"]:nth-child(5) [data-testid="stMetric"], [data-testid="column"]:nth-child(5) [data-testid="stMetric"] { animation-delay:.32s; }
+
+    /* buttons: shine sweep on hover, primary ones pulse */
+    .stButton>button, .stFormSubmitButton>button, .stDownloadButton>button, .stLinkButton>a { position:relative; overflow:hidden; }
+    .stButton>button::after, .stFormSubmitButton>button::after, .stDownloadButton>button::after, .stLinkButton>a::after {
+        content:""; position:absolute; top:0; left:-120%; width:55%; height:100%;
+        background:linear-gradient(120deg,transparent,rgba(255,255,255,.4),transparent); transform:skewX(-20deg); }
+    .stButton>button:hover::after, .stFormSubmitButton>button:hover::after,
+    .stDownloadButton>button:hover::after, .stLinkButton>a:hover::after { animation:shine .8s ease; }
+    .stButton>button:active, .stFormSubmitButton>button:active, .stDownloadButton>button:active { transform:scale(.96) !important; }
+    .stButton>button[kind="primary"], .stFormSubmitButton>button[kind="primary"] { animation:pulseGlow 2.4s ease-in-out infinite; }
+    .stButton>button[kind="primary"]:hover, .stFormSubmitButton>button[kind="primary"]:hover { animation:none; }
+
+    /* alerts (success / warning / error) slide in */
+    [data-testid="stAlert"] { animation:slideIn .5s cubic-bezier(.2,.8,.2,1); }
+
+    /* tables, charts, expanders fade up */
+    [data-testid="stDataFrame"], [data-testid="stDataEditor"], [data-testid="stExpander"],
+    [data-testid="stArrowVegaLiteChart"], [data-testid="stVegaLiteChart"] { animation:fadeUp .6s ease-out; }
+
+    /* inputs lift slightly when focused */
+    input:focus, select:focus, textarea:focus { transform:translateY(-1px); }
+
+    /* respect users who turn animations off in their OS */
+    @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -336,6 +390,7 @@ tbody tr:nth-child(even){background:#f1f5f9}
 tr.grand td{background:#0f172a;color:#fde047;font-weight:bold}
 .totals{margin-top:15px;padding:12px;background:#fefce8;border-radius:8px;border-left:6px solid #f59e0b;font-size:16px;font-weight:bold;text-align:right}
 .totals p{margin:4px 0}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.card{animation:up .6s ease-out}
 .btn{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;margin-bottom:15px}
 @media print{.btn{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 """
@@ -829,50 +884,6 @@ def tab_manage(tx, pay):
 
 
 # ======================================================================
-# PIN LOCK
-# ======================================================================
-MAX_TRIES = 5
-LOCK_SECONDS = 60
-
-
-def get_app_pin() -> tuple[str, bool]:
-    """PIN from .streamlit/secrets.toml (APP_PIN) or env var APP_PIN; else default 1234."""
-    try:
-        pin = str(st.secrets.get("APP_PIN", "") or "")
-    except Exception:
-        pin = ""
-    pin = pin or os.environ.get("APP_PIN", "")
-    return (pin, False) if pin else ("1234", True)
-
-
-def require_login() -> None:
-    if st.session_state.get("authed"):
-        return
-    pin, _ = get_app_pin()
-    wait = st.session_state.get("locked_until", 0) - time.time()
-
-    st.markdown("### 🔒 Shiva Traders — PIN डालें")
-    if wait > 0:
-        st.error(f"बहुत ज़्यादा गलत कोशिशें। {int(wait) + 1} सेकंड बाद दोबारा try करें।")
-    with st.form("login_form"):
-        entered = st.text_input("PIN:", type="password")
-        go = st.form_submit_button("🔓 खोलें", type="primary")
-    if go and wait <= 0:
-        if hmac.compare_digest(entered.encode(), pin.encode()):
-            st.session_state["authed"] = True
-            st.session_state["fails"] = 0
-            st.rerun()
-        else:
-            st.session_state["fails"] = st.session_state.get("fails", 0) + 1
-            left = MAX_TRIES - st.session_state["fails"]
-            if left <= 0:
-                st.session_state["locked_until"] = time.time() + LOCK_SECONDS
-                st.session_state["fails"] = 0
-                st.rerun()
-            st.error(f"❌ गलत PIN! ({left} कोशिशें बाकी)")
-    st.stop()
-
-# ======================================================================
 # MAIN
 # ======================================================================
 st.title("🏢 SHIVA TRADERS")
@@ -881,15 +892,6 @@ st.markdown(
     "Professional Mandi Commission & Billing Dashboard</p>",
     unsafe_allow_html=True,
 )
-
-require_login()
-
-top_l, top_r = st.columns([6, 1])
-if get_app_pin()[1]:
-    top_l.warning("⚠️ अभी default PIN (1234) चल रहा है — नीचे बताए तरीके से अपना PIN सेट करें।")
-if top_r.button("🔒 Lock", key="lock_btn"):
-    st.session_state["authed"] = False
-    st.rerun()
 
 flash = st.session_state.pop("flash", None)
 if flash:
