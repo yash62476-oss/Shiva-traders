@@ -1,541 +1,985 @@
+"""
+SHIVA TRADERS - Mandi Commission Billing & Accounting
+Run:  streamlit run shiva_traders_app.py
+"""
+
 from __future__ import annotations
 
-from datetime import datetime, date
-from pathlib import Path
 import html
+import io
+import os
+import shutil
 import urllib.parse
+import zipfile
+from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-# ============================================================
-# SHIVA TRADERS — Mandi Billing & Account Manager
-# Run: streamlit run shiva_traders.py
-# ============================================================
-
+# ======================================================================
+# PAGE CONFIG & THEME
+# ======================================================================
 st.set_page_config(
-    page_title="Shiva Traders | Billing & Accounts",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title="Shiva Traders | Billing & Accounting", page_icon="🏢", layout="wide"
 )
 
-APP_DIR = Path(".")
-SALES_FILE = APP_DIR / "mandi_commission_sales.csv"
-PAYMENTS_FILE = APP_DIR / "mandi_payments.csv"
-CUSTOMERS_FILE = APP_DIR / "customers_list.csv"
-
-SALES_COLUMNS = [
-    "Bill_ID", "Date", "Customer", "Phone", "Variety", "Bags", "Weight_Kg",
-    "Rate_Per_Kg", "Gross_Amount", "Commission_Percent", "Commission_Amt",
-    "Labour_Charges", "Total_Profit", "Net_Bill_Amount", "Remarks",
-]
-PAYMENT_COLUMNS = [
-    "Payment_ID", "Date", "Customer", "Amount_Paid", "Payment_Mode", "Remarks",
-]
-CUSTOMER_COLUMNS = ["Customer_Name", "Phone"]
-
-# ----------------------------- Theme -----------------------------
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-    :root { --accent:#38bdf8; --green:#34d399; --panel:#111827; }
-    html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-    .stApp { background: radial-gradient(circle at 12% 0%, #14253c 0, #0b1120 38%, #080d17 100%); }
-    [data-testid="stHeader"] { background: rgba(8,13,23,.85); }
-    [data-testid="stSidebar"] { background: linear-gradient(180deg,#101a2b,#0b1220); border-right:1px solid #26354a; }
-    h1,h2,h3 { letter-spacing:-.4px; }
-    h1 { color:#f8fafc !important; font-weight:800 !important; }
-    h2,h3 { color:#7dd3fc !important; }
-    p, label, [data-testid="stMarkdownContainer"] { color:#dbe5f1; }
-    div[data-testid="stMetric"] {
-      background:linear-gradient(145deg,rgba(23,37,58,.96),rgba(13,22,37,.96));
-      border:1px solid #2b405a; border-radius:16px; padding:16px 18px;
-      box-shadow:0 8px 24px rgba(0,0,0,.16); transition:transform .2s ease,border-color .2s ease;
-    }
-    div[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:#38bdf8; }
-    [data-testid="stMetricLabel"] { color:#9fb3c9 !important; }
-    [data-testid="stMetricValue"] { color:#f0f9ff !important; font-weight:800; }
-    .hero {
-      padding:24px 28px; border:1px solid #29415e; border-radius:20px;
-      background:linear-gradient(120deg,rgba(14,116,144,.20),rgba(30,41,59,.65) 55%,rgba(5,150,105,.13));
-      margin-bottom:18px;
-    }
-    .hero-kicker { color:#7dd3fc; text-transform:uppercase; letter-spacing:2px; font-size:11px; font-weight:800; }
-    .hero-title { color:#f8fafc; font-size:34px; font-weight:800; line-height:1.15; margin:6px 0; }
-    .hero-sub { color:#a8bdd2; font-size:14px; }
-    .section-note { color:#9fb3c9; font-size:13px; margin-top:-8px; margin-bottom:16px; }
-    .status-pill { display:inline-block; border-radius:999px; padding:4px 10px; background:#123b35; color:#6ee7b7; font-size:12px; font-weight:700; }
-    div.stButton > button, div.stDownloadButton > button {
-      border-radius:10px; font-weight:700; border:1px solid #2b526b;
-      transition:all .2s ease;
-    }
-    div.stButton > button[kind="primary"] { background:linear-gradient(135deg,#0891b2,#047857); color:white; border:0; }
-    div.stButton > button:hover, div.stDownloadButton > button:hover { border-color:#38bdf8; transform:translateY(-1px); }
-    button[data-baseweb="tab"] { border-radius:10px 10px 0 0; font-weight:700; }
-    [data-testid="stDataFrame"] { border:1px solid #2b405a; border-radius:12px; overflow:hidden; }
-    hr { border-color:#26354a; }
-    .small-muted { color:#94a3b8; font-size:12px; }
-    @media print { .no-print { display:none !important; } }
+    .stApp { background-color:#090d16 !important; color:#f1f5f9 !important;
+             overscroll-behavior-y:none !important; animation:fadeIn .5s ease-in-out; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+    html, body { overscroll-behavior-y:none !important; font-family:'Segoe UI',Tahoma,Verdana,sans-serif; }
+    footer { visibility:hidden; }
+
+    h1,h2,h3,h4 { color:#38bdf8 !important; font-weight:800 !important; letter-spacing:-.4px; }
+    label, label p, div[data-testid="stMarkdownContainer"] p { color:#e2e8f0 !important; font-weight:600 !important; }
+
+    input, select, textarea { color:#fff !important; background-color:#111827 !important;
+        border:1px solid #374151 !important; border-radius:8px !important; transition:all .25s ease !important; }
+    input:focus, select:focus { border-color:#38bdf8 !important; box-shadow:0 0 10px rgba(56,189,248,.4) !important; }
+
+    button[data-baseweb="tab"] { background:#111827 !important; border-radius:8px !important;
+        padding:10px 18px !important; margin-right:6px !important; border:1px solid #374151 !important;
+        transition:all .25s cubic-bezier(.4,0,.2,1); }
+    button[data-baseweb="tab"]:hover { background:#1f2937 !important; border-color:#38bdf8 !important; transform:translateY(-2px); }
+    button[data-baseweb="tab"] p { color:#9ca3af !important; font-weight:700 !important; font-size:14px !important; }
+    button[data-baseweb="tab"][aria-selected="true"] { background:linear-gradient(135deg,#3b82f6,#1d4ed8) !important;
+        border:1px solid #60a5fa !important; box-shadow:0 6px 15px rgba(59,130,246,.5); }
+    button[data-baseweb="tab"][aria-selected="true"] p { color:#fff !important; }
+
+    [data-testid="stMetric"] { background:linear-gradient(145deg,#111827,#1f2937) !important;
+        border:1px solid #374151 !important; padding:16px !important; border-radius:12px !important;
+        box-shadow:0 8px 20px rgba(0,0,0,.3); transition:transform .25s ease, box-shadow .25s ease; }
+    [data-testid="stMetric"]:hover { transform:translateY(-4px); box-shadow:0 12px 25px rgba(56,189,248,.2); border-color:#38bdf8; }
+    [data-testid="stMetricLabel"] p { color:#9ca3af !important; font-size:13px !important; text-transform:uppercase; letter-spacing:.8px; }
+    [data-testid="stMetricValue"] { color:#38bdf8 !important; font-weight:800 !important; font-size:24px !important; }
+
+    .stButton>button, .stFormSubmitButton>button, .stDownloadButton>button, .stLinkButton>a {
+        background:linear-gradient(135deg,#10b981,#047857) !important; color:#fff !important;
+        font-weight:700 !important; border-radius:8px !important; padding:10px 24px !important;
+        border:none !important; box-shadow:0 4px 15px rgba(16,185,129,.4);
+        transition:all .25s cubic-bezier(.4,0,.2,1) !important; }
+    .stButton>button:hover, .stFormSubmitButton>button:hover, .stDownloadButton>button:hover, .stLinkButton>a:hover {
+        background:linear-gradient(135deg,#059669,#065f46) !important;
+        box-shadow:0 8px 25px rgba(16,185,129,.7); transform:translateY(-2px) scale(1.02); }
+    .stButton>button:disabled { background:#374151 !important; box-shadow:none; transform:none; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# ----------------------------- Data helpers -----------------------------
-def ensure_csv(path: Path, columns: list[str]) -> None:
-    if not path.exists():
-        pd.DataFrame(columns=columns).to_csv(path, index=False)
+# ======================================================================
+# CONSTANTS
+# ======================================================================
+TX_FILE = Path("mandi_commission_sales.csv")
+PAY_FILE = Path("mandi_payments.csv")
+CUST_FILE = Path("customers_list.csv")
+BACKUP_DIR = Path("backups")
+
+TX_COLS = [
+    "Bill_ID",
+    "Date",
+    "Customer",
+    "Phone",
+    "Variety",
+    "Bags",
+    "Weight_Kg",
+    "Rate_Per_Kg",
+    "Gross_Amount",
+    "Commission_Percent",
+    "Commission_Amt",
+    "Labour_Charges",
+    "Total_Profit",
+    "Net_Bill_Amount",
+    "Remarks",
+]
+TX_NUM = [
+    "Bags",
+    "Weight_Kg",
+    "Rate_Per_Kg",
+    "Gross_Amount",
+    "Commission_Percent",
+    "Commission_Amt",
+    "Labour_Charges",
+    "Total_Profit",
+    "Net_Bill_Amount",
+]
+PAY_COLS = ["Pay_ID", "Date", "Customer", "Amount_Paid", "Payment_Mode", "Remarks"]
+CUST_COLS = ["Customer_Name", "Phone", "Opening_Balance"]
+
+PAY_MODES = ["Cash (नकद)", "UPI / PhonePe", "Bank Transfer", "Cheque"]
+NEW_CUSTOMER = "-- नया नाम टाइप करें --"
+DT_FMT = "%Y-%m-%d %H:%M"
+
+try:
+  _ver = tuple(int(x) for x in st.__version__.split(".")[:2])
+except ValueError:
+  _ver = (1, 0)
+STRETCH = {"width": "stretch"} if _ver >= (1, 50) else {"use_container_width": True}
 
 
-def read_csv(path: Path, columns: list[str]) -> pd.DataFrame:
-    ensure_csv(path, columns)
-    try:
-        df = pd.read_csv(path)
-    except (pd.errors.EmptyDataError, UnicodeDecodeError):
-        df = pd.DataFrame(columns=columns)
-    for column in columns:
-        if column not in df.columns:
-            df[column] = pd.NA
-    return df[columns]
+# ======================================================================
+# HELPERS
+# ======================================================================
+def inr(x) -> str:
+  try:
+    x = float(x)
+  except (TypeError, ValueError):
+    x = 0.0
+  neg = x < 0
+  whole, dec = f"{abs(x):.2f}".split(".")
+  if len(whole) > 3:
+    head, tail = whole[:-3], whole[-3:]
+    parts = []
+    while len(head) > 2:
+      parts.insert(0, head[-2:])
+      head = head[:-2]
+    if head:
+      parts.insert(0, head)
+    whole = ",".join(parts + [tail])
+  return f"{'-' if neg else ''}₹{whole}.{dec}"
 
 
-def append_row(path: Path, row: dict, columns: list[str]) -> None:
-    ensure_csv(path, columns)
-    pd.DataFrame([row], columns=columns).to_csv(
-        path, mode="a", header=False, index=False, encoding="utf-8"
+def num(x) -> str:
+  try:
+    return f"{float(x):g}"
+  except (TypeError, ValueError):
+    return str(x)
+
+
+def clean_phone(p) -> str:
+  s = str(p or "").strip()
+  if s.endswith(".0"):
+    s = s[:-2]
+  d = "".join(ch for ch in s if ch.isdigit())
+  if len(d) == 10:
+    return "91" + d
+  if len(d) == 11 and d.startswith("0"):
+    return "91" + d[1:]
+  if len(d) == 12 and d.startswith("91"):
+    return d
+  return ""
+
+
+def wa_url(phone, text: str) -> str:
+  p = clean_phone(phone)
+  return f"https://wa.me/{p}?text={urllib.parse.quote(text)}" if p else ""
+
+
+def backup_once(path: Path) -> None:
+  if not path.exists():
+    return
+  BACKUP_DIR.mkdir(exist_ok=True)
+  dst = BACKUP_DIR / f"{date.today():%Y-%m-%d}_{path.name}"
+  if not dst.exists():
+    shutil.copy2(path, dst)
+
+
+def _fill_ids(df: pd.DataFrame, col: str) -> None:
+  nums = pd.to_numeric(df[col], errors="coerce")
+  nxt = int(nums.max()) + 1 if nums.notna().any() else 1
+  for i in df.index[nums.isna()]:
+    df.at[i, col] = str(nxt)
+    nxt += 1
+
+
+def _load(path: Path, cols, num_cols=(), id_col=None) -> pd.DataFrame:
+  try:
+    df = (
+        pd.read_csv(path, dtype=str, keep_default_na=False, encoding="utf-8-sig")
+        if path.exists()
+        else pd.DataFrame(columns=cols)
+    )
+  except pd.errors.EmptyDataError:
+    df = pd.DataFrame(columns=cols)
+  for c in cols:
+    if c not in df.columns:
+      df[c] = ""
+  df = df[cols].copy().reset_index(drop=True)
+  for c in num_cols:
+    df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0.0)
+  if id_col:
+    _fill_ids(df, id_col)
+  return df
+
+
+def load_tx() -> pd.DataFrame:
+  df = _load(TX_FILE, TX_COLS, TX_NUM, "Bill_ID")
+  df["Customer"] = df["Customer"].str.strip()
+  return df
+
+
+def load_pay() -> pd.DataFrame:
+  df = _load(PAY_FILE, PAY_COLS, ["Amount_Paid"], "Pay_ID")
+  df["Customer"] = df["Customer"].str.strip()
+  return df
+
+
+def load_cust() -> pd.DataFrame:
+  df = _load(CUST_FILE, CUST_COLS, ["Opening_Balance"])
+  df["Customer_Name"] = df["Customer_Name"].str.strip()
+  return df.drop_duplicates("Customer_Name").reset_index(drop=True)
+
+
+def save_df(df: pd.DataFrame, path: Path) -> None:
+  backup_once(path)
+  tmp = path.with_suffix(".tmp")
+  df.to_csv(tmp, index=False, encoding="utf-8-sig")
+  os.replace(tmp, path)
+
+
+def append_row(df: pd.DataFrame, row: dict) -> pd.DataFrame:
+  new = pd.DataFrame([row], columns=df.columns)
+  return new if df.empty else pd.concat([df, new], ignore_index=True)
+
+
+def next_id(df: pd.DataFrame, col: str) -> str:
+  n = pd.to_numeric(df[col], errors="coerce")
+  return str(int(n.max()) + 1) if n.notna().any() else "1"
+
+
+def upsert_customer(name: str, phone: str) -> None:
+  c = load_cust()
+  m = c["Customer_Name"] == name
+  if m.any():
+    if phone and c.loc[m, "Phone"].iloc[0] != phone:
+      c.loc[m, "Phone"] = phone
+      save_df(c, CUST_FILE)
+  else:
+    c = append_row(
+        c, {"Customer_Name": name, "Phone": phone, "Opening_Balance": 0.0}
+    )
+    save_df(c, CUST_FILE)
+
+
+def balances(tx: pd.DataFrame, pay: pd.DataFrame, cust: pd.DataFrame) -> pd.DataFrame:
+  names = sorted(
+      {
+          str(n).strip()
+          for n in pd.concat(
+              [cust["Customer_Name"], tx["Customer"], pay["Customer"]]
+          )
+          if str(n).strip()
+      }
+  )
+  out = pd.DataFrame({"Customer": names})
+  opening = cust.set_index("Customer_Name")["Opening_Balance"]
+  out["Opening"] = out["Customer"].map(opening).fillna(0.0)
+  out["Billed"] = (
+      out["Customer"]
+      .map(tx.groupby("Customer")["Net_Bill_Amount"].sum())
+      .fillna(0.0)
+  )
+  out["Paid"] = (
+      out["Customer"]
+      .map(pay.groupby("Customer")["Amount_Paid"].sum())
+      .fillna(0.0)
+  )
+  out["Balance"] = out["Opening"] + out["Billed"] - out["Paid"]
+  return out
+
+
+def balance_of(bal: pd.DataFrame, name: str) -> float:
+  r = bal.loc[bal["Customer"] == name, "Balance"]
+  return float(r.iloc[0]) if not r.empty else 0.0
+
+
+def phone_of(cust: pd.DataFrame, name: str) -> str:
+  r = cust.loc[cust["Customer_Name"] == name, "Phone"]
+  p = str(r.iloc[0]) if not r.empty else ""
+  return p[:-2] if p.endswith(".0") else p
+
+
+def flash_and_rerun(
+    msg: str, wa: str = "", wa_label: str = "📲 WhatsApp पर भेजें"
+) -> None:
+  st.session_state["flash"] = {"msg": msg, "wa": wa, "wa_label": wa_label}
+  st.rerun()
+
+
+# ======================================================================
+# PRINT / HTML BUILDERS
+# ======================================================================
+PRINT_CSS = """
+body{font-family:Arial,sans-serif;padding:10px;color:#000;background:#fff}
+.card{border:2px solid #1e3a8a;padding:20px;border-radius:10px;box-sizing:border-box}
+.title{text-align:center;color:#1e3a8a;font-size:26px;font-weight:800;border-bottom:2px solid #2563eb;padding-bottom:5px}
+.meta{display:flex;justify-content:space-between;margin-top:10px;font-size:15px}
+h3{color:#1e3a8a;margin:18px 0 0}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #475569;padding:7px;text-align:center;font-size:13px;color:#000}
+th{background:#2563eb;color:#fff}
+tr.grand td{background:#0f172a;color:#fff;font-weight:bold}
+.totals{margin-top:15px;padding:12px;background:#f1f5f9;border-radius:6px;border-left:5px solid #2563eb;font-size:16px;font-weight:bold;text-align:right}
+.totals p{margin:4px 0}
+.btn{background:#16a34a;color:#fff;padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:16px;font-weight:bold;margin-bottom:15px}
+@media print{.btn{display:none}}
+"""
+
+
+def html_page(body: str) -> str:
+  return (
+      "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+      f"<style>{PRINT_CSS}</style></head><body>"
+      "<button class='btn' onclick='window.print()'>🖨️ प्रिंट / PDF"
+      f" निकालें</button>{body}</body></html>"
+  )
+
+
+def statement_body(
+    party: str, sales: pd.DataFrame, pays: pd.DataFrame, lines, show_pays=True
+) -> str:
+  e = html.escape
+  s_rows = (
+      "".join(
+          f"<tr><td>{e(str(r.Date))}</td><td>{e(str(r.Variety))}</td><td>{num(r.Bags)}</td>"
+          f"<td>{num(r.Weight_Kg)} Kg</td><td>{inr(r.Rate_Per_Kg)}</td><td>{inr(r.Gross_Amount)}</td>"
+          f"<td>{inr(r.Commission_Amt)} ({num(r.Commission_Percent)}%)</td><td>{inr(r.Labour_Charges)}</td>"
+          f"<td style='color:#1d4ed8;font-weight:bold'>{inr(r.Net_Bill_Amount)}</td></tr>"
+          for r in sales.itertuples()
+      )
+      or "<tr><td colspan='9'>कोई बिल नहीं है।</td></tr>"
+  )
+
+  pay_html = ""
+  if show_pays:
+    p_rows = (
+        "".join(
+            f"<tr><td>{e(str(r.Date))}</td>"
+            f"<td style='color:#15803d;font-weight:bold'>{inr(r.Amount_Paid)}</td>"
+            f"<td>{e(str(r.Payment_Mode))}</td><td>{e(str(r.Remarks))}</td></tr>"
+            for r in pays.itertuples()
+        )
+        or "<tr><td colspan='4'>कोई जमा राशि नहीं है।</td></tr>"
+    )
+    pay_html = (
+        "<h3>💵 जमा राशि विवरण:</h3><table><thead><tr><th>तारीख</th><th>जमा"
+        f" रकम</th><th>माध्यम</th><th>नोट</th></tr></thead><tbody>{p_rows}</tbody></table>"
+    )
+
+  totals = ""
+  for i, (label, val, color) in enumerate(lines):
+    size = "font-size:19px;" if i == len(lines) - 1 else ""
+    totals += f"<p style='color:{color};{size}'>{e(label)}: {val}</p>"
+
+  return (
+      "<div class='card'><div class='title'>SHIVA TRADERS</div>"
+      f"<div class='meta'><span><b>ग्राहक नाम:</b> <span"
+      f" style='color:#1d4ed8'>{e(party)}</span></span><span><b>दिनांक:</b>"
+      f" {datetime.now():%d-%m-%Y %H:%M}</span></div>"
+      "<h3>📦 बिक्री विवरण:</h3><table><thead><tr><th>तारीख</th><th>विवरण</th><th>बोरी</th>"
+      "<th>वजन</th><th>रेट</th><th>मूल"
+      " रकम</th><th>कमीशन</th><th>मजदूरी</th><th>कुल बिल</th></tr></thead>"
+      f"<tbody>{s_rows}</tbody></table>{pay_html}<div"
+      f" class='totals'>{totals}</div></div>"
+  )
+
+
+REG_COLS = [
+    ("Customer", "पार्टी का नाम", "t"),
+    ("Bags", "बोरी", "n"),
+    ("Weight", "वजन (Kg)", "n"),
+    ("Gross", "मूल रकम", "m"),
+    ("Comm", "कमीशन", "m"),
+    ("Labour", "मजदूरी", "m"),
+    ("Profit", "कुल प्रॉफिट", "m"),
+    ("Bill", "कुल बिल", "m"),
+    ("Paid", "जमा", "m"),
+    ("Balance", "कुल बकाया (अब तक)", "m"),
+]
+
+
+def register_body(reg: pd.DataFrame, period: str) -> str:
+  e = html.escape
+  head = "".join(f"<th>{e(lbl)}</th>" for _, lbl, _ in REG_COLS)
+  rows = ""
+  for r in reg.to_dict("records"):
+    grand = r["Customer"] == "GRAND TOTAL"
+    cells = ""
+    for key, _, kind in REG_COLS:
+      v = r[key]
+      txt = e(str(v)) if kind == "t" else (num(v) if kind == "n" else inr(v))
+      align = " style='text-align:left'" if kind == "t" else ""
+      cells += f"<td{align}>{txt}</td>"
+    rows += f"<tr class='{'grand' if grand else ''}'>{cells}</tr>"
+  return (
+      "<div class='card'><div class='title'>SHIVA TRADERS</div>"
+      f"<p style='text-align:right;font-size:13px;color:#475569'><b>अवधि:</b>"
+      f" {e(period)} &nbsp; <b>Report:</b> {datetime.now():%d-%m-%Y %H:%M}</p>"
+      f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>"
+  )
+
+
+# ======================================================================
+# TABS
+# ======================================================================
+def tab_dashboard(tx, pay, bal):
+  st.subheader("आज का हिसाब (Dashboard)")
+  today = date.today()
+  dt = pd.to_datetime(tx["Date"], errors="coerce")
+  pdt = pd.to_datetime(pay["Date"], errors="coerce")
+  t_tx, t_pay = tx[dt.dt.date == today], pay[pdt.dt.date == today]
+  month_profit = tx.loc[
+      (dt.dt.year == today.year) & (dt.dt.month == today.month), "Total_Profit"
+  ].sum()
+
+  c1, c2, c3, c4, c5 = st.columns(5)
+  c1.metric("आज के बिल", f"{len(t_tx)}")
+  c2.metric("आज की बिक्री", inr(t_tx["Net_Bill_Amount"].sum()))
+  c3.metric("आज का प्रॉफिट", inr(t_tx["Total_Profit"].sum()))
+  c4.metric("आज की वसूली", inr(t_pay["Amount_Paid"].sum()))
+  c5.metric("इस महीने का प्रॉफिट", inr(month_profit))
+
+  total_due = bal.loc[bal["Balance"] > 0, "Balance"].sum() if not bal.empty else 0.0
+  st.markdown(f"### 🚨 कुल बाज़ार बकाया (Udhaar): {inr(total_due)}")
+
+  left, right = st.columns(2)
+  with left:
+    st.markdown("#### 🔝 सबसे ज़्यादा बकाया वाली पार्टियाँ")
+    top = bal[bal["Balance"] > 0].nlargest(8, "Balance")
+    if top.empty:
+      st.info("कोई बकाया नहीं है 🎉")
+    else:
+      st.bar_chart(top.set_index("Customer")["Balance"])
+  with right:
+    st.markdown("#### 📈 पिछले 7 दिन का प्रॉफिट")
+    days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    sub = tx[dt >= pd.Timestamp(days[0])]
+    daily = (
+        sub.groupby(dt[sub.index].dt.date)["Total_Profit"]
+        .sum()
+        .reindex(days, fill_value=0.0)
+    )
+    daily.index = [d.strftime("%d-%m") for d in days]
+    st.bar_chart(daily)
+
+
+def tab_new_bill(tx, pay, cust, bal):
+  st.subheader("1. नया बिल और आढ़त एंट्री")
+
+  if st.session_state.pop("_reset_bill", False):
+    for k in ("bill_name", "bill_phone", "bill_rem"):
+      st.session_state[k] = ""
+    st.session_state["bill_instant"] = 0.0
+
+  names = list(bal["Customer"]) if not bal.empty else []
+  col1, col2, col3 = st.columns(3)
+
+  with col1:
+    if names:
+      choice = st.selectbox("ग्राहक चुनें:", [NEW_CUSTOMER] + names, key="bill_cust")
+    else:
+      choice = NEW_CUSTOMER
+      st.info("⚠️ कोई ग्राहक सेव नहीं है — नया नाम लिखें।")
+
+    if choice == NEW_CUSTOMER:
+      name = st.text_input("ग्राहक / पार्टी का नाम:", key="bill_name").strip()
+      phone = st.text_input("फोन नंबर (WhatsApp):", key="bill_phone").strip()
+    else:
+      name = choice
+      phone = st.text_input(
+          "फोन नंबर (WhatsApp):",
+          value=phone_of(cust, choice),
+          key=f"bill_phone_{choice}",
+      ).strip()
+      prev = balance_of(bal, choice)
+      st.caption(f"📒 अभी तक का बकाया: **{inr(prev)}**")
+
+    variety = st.text_input("आइटम / विवरण:", value="3797", key="bill_variety")
+    bill_date = st.date_input("बिल की तारीख:", value=date.today(), key="bill_date")
+
+  with col2:
+    bags = st.number_input(
+        "बोरी / कट्टे (Bags):", min_value=1, value=50, step=1, key="bill_bags"
+    )
+    weight_kg = st.number_input(
+        "कुल वजन (Kg):", min_value=1.0, value=2500.0, step=10.0, key="bill_wt"
+    )
+    rate_kg = st.number_input(
+        "रेट (₹ per Kg):", min_value=0.5, value=12.0, step=0.5, key="bill_rate"
+    )
+
+  with col3:
+    comm_percent = st.number_input(
+        "कमीशन (%):", min_value=0.0, value=1.0, step=0.25, key="bill_comm"
+    )
+    labour_per_bag = st.number_input(
+        "मजदूरी / खर्चा (₹ प्रति बोरी):",
+        min_value=0.0,
+        value=4.0,
+        step=0.5,
+        key="bill_lab",
+    )
+    remarks = st.text_input("गाड़ी नंबर / रिमार्क्स:", key="bill_rem")
+
+  gross = round(weight_kg * rate_kg, 2)
+  comm_amt = round(gross * comm_percent / 100.0, 2)
+  labour_total = round(bags * labour_per_bag, 2)
+  profit = round(comm_amt + labour_total, 2)
+  net_bill = round(gross + profit, 2)
+
+  st.markdown("---")
+  st.subheader("📊 हिसाब-किताब & फ्रंट पेमेंट")
+  p1, p2 = st.columns(2)
+  instant_pay = p1.number_input(
+      "हाथ-हाथ मिले पैसे (₹) [अगर अभी कुछ मिला है]:",
+      min_value=0.0,
+      value=0.0,
+      step=100.0,
+      key="bill_instant",
+  )
+  pay_mode = p2.selectbox("पेमेंट माध्यम:", PAY_MODES, key="bill_mode")
+
+  m1, m2, m3, m4 = st.columns(4)
+  m1.metric("मूल रकम (Gross)", inr(gross))
+  m2.metric(f"कमीशन ({num(comm_percent)}%)", inr(comm_amt))
+  m3.metric(f"मजदूरी ({bags} बोरी)", inr(labour_total))
+  m4.metric("🔥 कुल प्रॉफिट", inr(profit))
+  st.markdown(f"## 💸 Party Net Bill Amount: {inr(net_bill)}")
+
+  if instant_pay > net_bill:
+    st.warning("⚠️ हाथ-हाथ पैसे बिल रकम से ज़्यादा हैं (एडवांस के तौर पर जमा होगा)।")
+
+  if st.button("पर्ची सेव करें (Save Bill & Payment)", type="primary", key="bill_save"):
+    if not name:
+      st.error("कृपया ग्राहक का नाम भरें!")
+    elif phone and not clean_phone(phone):
+      st.error("फोन नंबर सही नहीं है (10 अंक का मोबाइल नंबर डालें)।")
+    else:
+      now_str = datetime.combine(
+          bill_date, datetime.now().time()
+      ).strftime(DT_FMT)
+      prev_bal = balance_of(bal, name)
+
+      tx_df = load_tx()
+      tx_df = append_row(
+          tx_df,
+          {
+              "Bill_ID": next_id(tx_df, "Bill_ID"),
+              "Date": now_str,
+              "Customer": name,
+              "Phone": phone,
+              "Variety": variety,
+              "Bags": bags,
+              "Weight_Kg": weight_kg,
+              "Rate_Per_Kg": rate_kg,
+              "Gross_Amount": gross,
+              "Commission_Percent": comm_percent,
+              "Commission_Amt": comm_amt,
+              "Labour_Charges": labour_total,
+              "Total_Profit": profit,
+              "Net_Bill_Amount": net_bill,
+              "Remarks": remarks,
+          },
+      )
+      save_df(tx_df, TX_FILE)
+
+      if instant_pay > 0:
+        pay_df = load_pay()
+        pay_df = append_row(
+            pay_df,
+            {
+                "Pay_ID": next_id(pay_df, "Pay_ID"),
+                "Date": now_str,
+                "Customer": name,
+                "Amount_Paid": instant_pay,
+                "Payment_Mode": pay_mode,
+                "Remarks": "बिल के साथ फ्रंट पेमेंट",
+            },
+        )
+        save_df(pay_df, PAY_FILE)
+
+      upsert_customer(name, phone)
+      new_bal = prev_bal + net_bill - instant_pay
+
+      lines = [
+          "🏢 *SHIVA TRADERS*",
+          "",
+          f"नमस्ते {name} जी,",
+          "आपका बिल तैयार है:",
+          f"• बिल रकम: {inr(net_bill)}",
+          f"• जमा किए: {inr(instant_pay)}",
+      ]
+      if abs(prev_bal) > 0.005:
+        lines.append(f"• पिछला बकाया: {inr(prev_bal)}")
+      lines += [f"• *कुल बकाया: {inr(new_bal)}*", "", "धन्यवाद! 🙏"]
+
+      st.session_state["_reset_bill"] = True
+      flash_and_rerun(
+          f"✅ {name} का बिल सेव हो गया! कुल बकाया: {inr(new_bal)}",
+          wa_url(phone, "\n".join(lines)),
+      )
+
+
+def tab_payment(bal):
+  st.subheader("2. ग्राहक से जमा पैसा (Payment Entry)")
+  if bal.empty:
+    st.info("अभी कोई ग्राहक नहीं है।")
+    return
+
+  names = list(bal["Customer"])
+  cust_name = st.selectbox("ग्राहक चुनें:", names, key="pay_cust")
+  cur = balance_of(bal, cust_name)
+  st.caption(f"📒 अभी का बकाया: **{inr(cur)}**")
+
+  c1, c2 = st.columns(2)
+  amount = c1.number_input(
+      "कितने पैसे मिले (₹):", min_value=1.0, value=1000.0, step=100.0, key="pay_amt"
+  )
+  mode = c2.selectbox("माध्यम:", PAY_MODES, key="pay_mode")
+  pay_date = c1.date_input("तारीख:", value=date.today(), key="pay_date")
+  remark = c2.text_input("नोट / टिप्पणी:", key="pay_rem")
+
+  if amount > cur and cur >= 0:
+    st.warning("⚠️ यह रकम बकाये से ज़्यादा है — बाकी एडवांस माना जाएगा।")
+
+  if st.button("पेमेंट सेव करें", type="primary", key="pay_btn"):
+    pay_df = load_pay()
+    pay_df = append_row(
+        pay_df,
+        {
+            "Pay_ID": next_id(pay_df, "Pay_ID"),
+            "Date": datetime.combine(pay_date, datetime.now().time()).strftime(
+                DT_FMT
+            ),
+            "Customer": cust_name,
+            "Amount_Paid": amount,
+            "Payment_Mode": mode,
+            "Remarks": remark,
+        },
+    )
+    save_df(pay_df, PAY_FILE)
+    new_bal = cur - amount
+    msg = (
+        f"🏢 *SHIVA TRADERS*\n\nनमस्ते {cust_name} जी,\nआपके {inr(amount)} जमा हो"
+        f" गए हैं。\n*शेष बकाया: {inr(new_bal)}*\n\nधन्यवाद! 🙏"
+    )
+    flash_and_rerun(
+        f"✅ {inr(amount)} की जमा एंट्री हो गई! ({cust_name}) — शेष बकाया:"
+        f" {inr(new_bal)}",
+        wa_url(phone_of(load_cust(), cust_name), msg),
+        "📲 रसीद WhatsApp करें",
     )
 
 
-def money(value: float) -> str:
-    return f"₹{float(value or 0):,.2f}"
+def tab_customers(cust, bal):
+  st.subheader("3. ग्राहक सूची")
 
+  with st.form("add_customer", clear_on_submit=True):
+    a, b, c = st.columns(3)
+    n = a.text_input("ग्राहक का पूरा नाम:")
+    p = b.text_input("मोबाइल नंबर (WhatsApp):")
+    ob = c.number_input("पुराना बकाया (₹) [Opening]:", value=0.0, step=100.0)
+    submitted = st.form_submit_button("ग्राहक सेव करें", type="primary")
 
-def safe_text(value) -> str:
-    return html.escape("" if pd.isna(value) else str(value))
-
-
-def clean_phone(value: str) -> str:
-    digits = "".join(ch for ch in str(value) if ch.isdigit())
-    if len(digits) == 10:
-        digits = "91" + digits
-    return digits
-
-
-def next_id(prefix: str, df: pd.DataFrame, col: str) -> str:
-    existing = df[col].dropna().astype(str).tolist() if col in df.columns else []
-    number = len(existing) + 1
-    candidate = f"{prefix}-{datetime.now():%y%m%d}-{number:04d}"
-    while candidate in existing:
-        number += 1
-        candidate = f"{prefix}-{datetime.now():%y%m%d}-{number:04d}"
-    return candidate
-
-
-def get_balance_tables(sales: pd.DataFrame, payments: pd.DataFrame):
-    sales_copy = sales.copy()
-    payments_copy = payments.copy()
-    if not sales_copy.empty:
-        sales_copy["Net_Bill_Amount"] = pd.to_numeric(sales_copy["Net_Bill_Amount"], errors="coerce").fillna(0)
-    if not payments_copy.empty:
-        payments_copy["Amount_Paid"] = pd.to_numeric(payments_copy["Amount_Paid"], errors="coerce").fillna(0)
-    billed = sales_copy.groupby("Customer")["Net_Bill_Amount"].sum() if not sales_copy.empty else pd.Series(dtype=float)
-    paid = payments_copy.groupby("Customer")["Amount_Paid"].sum() if not payments_copy.empty else pd.Series(dtype=float)
-    names = sorted(set(billed.index.tolist()) | set(paid.index.tolist()))
-    summary = pd.DataFrame({"Customer": names})
-    summary["Total_Billed"] = summary["Customer"].map(billed).fillna(0)
-    summary["Total_Paid"] = summary["Customer"].map(paid).fillna(0)
-    summary["Balance"] = summary["Total_Billed"] - summary["Total_Paid"]
-    return summary
-
-
-ensure_csv(SALES_FILE, SALES_COLUMNS)
-ensure_csv(PAYMENTS_FILE, PAYMENT_COLUMNS)
-ensure_csv(CUSTOMERS_FILE, CUSTOMER_COLUMNS)
-
-sales_df = read_csv(SALES_FILE, SALES_COLUMNS)
-payments_df = read_csv(PAYMENTS_FILE, PAYMENT_COLUMNS)
-customers_df = read_csv(CUSTOMERS_FILE, CUSTOMER_COLUMNS)
-
-for col in ["Bags", "Weight_Kg", "Rate_Per_Kg", "Gross_Amount", "Commission_Percent",
-            "Commission_Amt", "Labour_Charges", "Total_Profit", "Net_Bill_Amount"]:
-    sales_df[col] = pd.to_numeric(sales_df[col], errors="coerce").fillna(0)
-payments_df["Amount_Paid"] = pd.to_numeric(payments_df["Amount_Paid"], errors="coerce").fillna(0)
-
-balance_df = get_balance_tables(sales_df, payments_df)
-total_sales = float(sales_df["Net_Bill_Amount"].sum()) if not sales_df.empty else 0.0
-total_profit = float(sales_df["Total_Profit"].sum()) if not sales_df.empty else 0.0
-total_received = float(payments_df["Amount_Paid"].sum()) if not payments_df.empty else 0.0
-total_due = total_sales - total_received
-
-# ----------------------------- Sidebar -----------------------------
-with st.sidebar:
-    st.markdown("## 🏢 SHIVA TRADERS")
-    st.caption("Mandi billing • Commission • Accounts")
-    st.markdown("---")
-    st.markdown("**Quick overview**")
-    st.metric("Total bills", len(sales_df))
-    st.metric("Total parties", int(balance_df["Customer"].nunique()) if not balance_df.empty else 0)
-    st.metric("Outstanding", money(total_due))
-    st.markdown("---")
-    st.caption(f"📅 {datetime.now():%d %B %Y}")
-    st.caption("Tip: export your CSV files regularly as a backup.")
-
-# ----------------------------- Header -----------------------------
-st.markdown(
-    f"""
-    <div class="hero">
-      <div class="hero-kicker">MANDI MANAGEMENT SUITE</div>
-      <div class="hero-title">Shiva Traders <span style="color:#38bdf8">.</span></div>
-      <div class="hero-sub">Billing, customer ledger, payments and printable statements — all in one place.</div>
-      <div style="margin-top:14px"><span class="status-pill">● LOCAL DATA MODE</span>
-      <span class="small-muted" style="margin-left:10px">Updated {datetime.now():%d %b %Y, %I:%M %p}</span></div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Dashboard metrics
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("💰 Total billed", money(total_sales))
-m2.metric("📥 Total received", money(total_received))
-m3.metric("⏳ Outstanding", money(total_due), delta="Pending balance")
-m4.metric("📈 Commission + labour", money(total_profit))
-
-tab_dashboard, tab_bill, tab_customer, tab_payment, tab_ledger, tab_reports = st.tabs([
-    "🏠 Dashboard", "🧾 New Bill", "👥 Customers", "💵 Payments", "📒 Party Ledger", "📊 Reports & Export"
-])
-
-# ----------------------------- Dashboard -----------------------------
-with tab_dashboard:
-    st.subheader("Business snapshot")
-    st.markdown('<div class="section-note">A quick view of recent activity and outstanding customer balances.</div>', unsafe_allow_html=True)
-    left, right = st.columns([1.4, 1])
-    with left:
-        st.markdown("#### Recent bills")
-        if sales_df.empty:
-            st.info("Abhi koi bill nahi hai. **New Bill** tab se pehli entry add karein.")
-        else:
-            recent = sales_df.sort_values("Date", ascending=False).head(8).copy()
-            recent = recent[["Bill_ID", "Date", "Customer", "Variety", "Bags", "Net_Bill_Amount"]]
-            recent["Net_Bill_Amount"] = recent["Net_Bill_Amount"].map(money)
-            st.dataframe(recent, use_container_width=True, hide_index=True)
-    with right:
-        st.markdown("#### Highest outstanding")
-        if balance_df.empty:
-            st.info("Customer balance data abhi available nahi hai.")
-        else:
-            due = balance_df[balance_df["Balance"] > 0].sort_values("Balance", ascending=False).head(8).copy()
-            if due.empty:
-                st.success("🎉 Kisi customer ka positive balance pending nahi hai.")
-            else:
-                due["Balance"] = due["Balance"].map(money)
-                st.dataframe(due[["Customer", "Balance"]], use_container_width=True, hide_index=True)
-    st.markdown("---")
-    if not sales_df.empty:
-        st.markdown("#### Billing trend")
-        trend = sales_df.copy()
-        trend["DateOnly"] = pd.to_datetime(trend["Date"], errors="coerce").dt.date
-        trend = trend.dropna(subset=["DateOnly"]).groupby("DateOnly", as_index=False)["Net_Bill_Amount"].sum()
-        if not trend.empty:
-            st.line_chart(trend.set_index("DateOnly")["Net_Bill_Amount"], use_container_width=True)
-    st.caption("Note: data is stored in CSV files in the app's working folder. Keep backups.")
-
-# ----------------------------- New bill -----------------------------
-with tab_bill:
-    st.subheader("Create a new bill")
-    st.markdown('<div class="section-note">Enter the party, quantity and rate. Amounts are calculated automatically.</div>', unsafe_allow_html=True)
-
-    saved_names = sorted(customers_df["Customer_Name"].dropna().astype(str).unique().tolist())
-    choose_options = ["＋ Add a new customer"] + saved_names
-    chosen = st.selectbox("Choose saved party (or add new)", choose_options, key="bill_customer_choice")
-    if chosen == "＋ Add a new customer":
-        col1, col2 = st.columns(2)
-        with col1:
-            customer_name = st.text_input("Party / customer name", key="bill_customer_name").strip()
-        with col2:
-            customer_phone = st.text_input("Mobile number", key="bill_customer_phone").strip()
+  if submitted:
+    n, p = n.strip(), p.strip()
+    existing = {x.lower() for x in bal["Customer"]} if not bal.empty else set()
+    if not n:
+      st.error("कृपया ग्राहक का नाम दर्ज करें!")
+    elif n.lower() in existing:
+      st.warning("यह ग्राहक पहले से सूची में मौजूद है!")
+    elif p and not clean_phone(p):
+      st.error("फोन नंबर सही नहीं है (10 अंक)।")
     else:
-        match = customers_df[customers_df["Customer_Name"].astype(str) == chosen]
-        default_phone = "" if match.empty or pd.isna(match.iloc[0]["Phone"]) else str(match.iloc[0]["Phone"])
-        col1, col2 = st.columns(2)
-        with col1:
-            customer_name = chosen
-            st.text_input("Party / customer name", value=chosen, disabled=True, key="saved_customer_name")
-        with col2:
-            customer_phone = st.text_input("Mobile number", value=default_phone, key="saved_customer_phone").strip()
+      c_df = append_row(
+          load_cust(),
+          {"Customer_Name": n, "Phone": p, "Opening_Balance": ob},
+      )
+      save_df(c_df, CUST_FILE)
+      flash_and_rerun(f"✅ '{n}' सफलतापूर्वक सेव हो गया!")
 
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        variety = st.text_input("Item / variety", value="3797")
-        bags = st.number_input("Bags / boriyan", min_value=1, value=50, step=1)
-    with col_b:
-        weight_kg = st.number_input("Total weight (kg)", min_value=0.1, value=2500.0, step=10.0)
-        rate_kg = st.number_input("Rate per kg (₹)", min_value=0.0, value=12.0, step=0.5)
-    with col_c:
-        commission_percent = st.number_input("Commission (%)", min_value=0.0, value=1.0, step=0.25)
-        labour_per_bag = st.number_input("Labour per bag (₹)", min_value=0.0, value=4.0, step=0.5)
-    remarks = st.text_input("Vehicle number / remarks")
+  st.markdown("### 📋 सभी ग्राहक (फोन / पुराना बकाया यहीं बदलें)")
+  if bal.empty:
+    st.info("अभी कोई ग्राहक सेव नहीं है।")
+    return
 
-    gross = weight_kg * rate_kg
-    commission = gross * commission_percent / 100
-    labour = bags * labour_per_bag
-    profit = commission + labour
-    net_bill = gross + profit
+  base = (
+      cust.set_index("Customer_Name")
+      .reindex(bal["Customer"])
+      .reset_index()
+      .rename(columns={"Customer": "Customer_Name", "index": "Customer_Name"})
+  )
+  base["Phone"] = base["Phone"].fillna("")
+  base["Opening_Balance"] = base["Opening_Balance"].fillna(0.0)
+  base = base[CUST_COLS]
 
-    st.markdown("---")
-    st.markdown("#### Bill calculation")
-    calc1, calc2, calc3, calc4 = st.columns(4)
-    calc1.metric("Gross amount", money(gross))
-    calc2.metric("Commission", money(commission))
-    calc3.metric("Labour", money(labour))
-    calc4.metric("Net bill", money(net_bill))
-    st.caption("Formula: Gross = Weight × Rate | Commission = Gross × % | Labour = Bags × Labour rate | Net bill = Gross + Commission + Labour")
-
-    st.markdown("#### Payment received with this bill (optional)")
-    p1, p2 = st.columns(2)
-    with p1:
-        instant_payment = st.number_input("Received now (₹)", min_value=0.0, value=0.0, step=100.0)
-    with p2:
-        instant_mode = st.selectbox("Payment method", ["Cash", "UPI / PhonePe", "Bank transfer", "Cheque"])
-
-    if st.button("✅ Save bill", type="primary", use_container_width=True):
-        if not customer_name:
-            st.error("Party ka naam zaroor bharein.")
-        elif instant_payment > net_bill:
-            st.error("Received amount bill amount se zyada hai. Amount check karein.")
-        else:
-            now = datetime.now().strftime("%Y-%m-%d %H:%M")
-            sales_now = read_csv(SALES_FILE, SALES_COLUMNS)
-            bill_id = next_id("ST", sales_now, "Bill_ID")
-            append_row(SALES_FILE, {
-                "Bill_ID": bill_id, "Date": now, "Customer": customer_name,
-                "Phone": customer_phone, "Variety": variety, "Bags": bags,
-                "Weight_Kg": weight_kg, "Rate_Per_Kg": rate_kg, "Gross_Amount": gross,
-                "Commission_Percent": commission_percent, "Commission_Amt": commission,
-                "Labour_Charges": labour, "Total_Profit": profit, "Net_Bill_Amount": net_bill,
-                "Remarks": remarks,
-            }, SALES_COLUMNS)
-            if instant_payment > 0:
-                payments_now = read_csv(PAYMENTS_FILE, PAYMENT_COLUMNS)
-                append_row(PAYMENTS_FILE, {
-                    "Payment_ID": next_id("PAY", payments_now, "Payment_ID"),
-                    "Date": now, "Customer": customer_name, "Amount_Paid": instant_payment,
-                    "Payment_Mode": instant_mode, "Remarks": f"Payment with bill {bill_id}",
-                }, PAYMENT_COLUMNS)
-            if customer_name not in saved_names:
-                append_row(CUSTOMERS_FILE, {"Customer_Name": customer_name, "Phone": customer_phone}, CUSTOMER_COLUMNS)
-            st.success(f"Bill {bill_id} saved successfully for {customer_name}.")
-            st.info(f"Bill: {money(net_bill)}  •  Received now: {money(instant_payment)}  •  Remaining on this bill before older balances: {money(net_bill - instant_payment)}")
-            if customer_phone:
-                phone = clean_phone(customer_phone)
-                if len(phone) >= 10:
-                    message = (
-                        f"SHIVA TRADERS\\nBill No: {bill_id}\\nParty: {customer_name}\\n"
-                        f"Bill Amount: {money(net_bill)}\\nReceived: {money(instant_payment)}\\n"
-                        f"Thank you!"
-                    )
-                    wa_url = f"https://wa.me/{phone}?text={urllib.parse.quote(message)}"
-                    st.link_button("📲 Send bill summary on WhatsApp", wa_url)
-            st.caption("Reload the page if the dashboard totals do not update immediately.")
-
-# ----------------------------- Customers -----------------------------
-with tab_customer:
-    st.subheader("Customer directory")
-    with st.form("add_customer_form", clear_on_submit=True):
-        c1, c2 = st.columns(2)
-        with c1:
-            new_name = st.text_input("Full customer / party name")
-        with c2:
-            new_phone = st.text_input("Mobile number")
-        add_customer = st.form_submit_button("＋ Save customer", type="primary")
-    if add_customer:
-        new_name = new_name.strip()
-        if not new_name:
-            st.error("Customer name required.")
-        elif not customers_df.empty and customers_df["Customer_Name"].fillna("").astype(str).str.casefold().eq(new_name.casefold()).any():
-            st.warning("This customer is already saved.")
-        else:
-            append_row(CUSTOMERS_FILE, {"Customer_Name": new_name, "Phone": new_phone.strip()}, CUSTOMER_COLUMNS)
-            st.success(f"{new_name} saved. Reload the page to refresh all lists.")
-    st.markdown("---")
-    st.markdown("#### Saved customers")
-    if customers_df.empty:
-        st.info("Abhi customer list khaali hai.")
+  edited = st.data_editor(
+      base,
+      hide_index=True,
+      disabled=["Customer_Name"],
+      key="cust_editor",
+      column_config={
+          "Customer_Name": st.column_config.TextColumn("ग्राहक"),
+          "Phone": st.column_config.TextColumn("फोन"),
+          "Opening_Balance": st.column_config.NumberColumn(
+              "पुराना बकाया (₹)", format="%.2f"
+          ),
+      },
+      **STRETCH,
+  )
+  if st.button("बदलाव सेव करें", key="cust_save"):
+    bad = [
+        r.Customer_Name
+        for r in edited.itertuples()
+        if str(r.Phone).strip() and not clean_phone(r.Phone)
+    ]
+    if bad:
+      st.error(f"इनका फोन नंबर सही नहीं है: {', '.join(bad)}")
     else:
-        display_customers = customers_df.copy()
-        display_customers = display_customers.fillna("")
-        st.dataframe(display_customers, use_container_width=True, hide_index=True)
-        st.download_button(
-            "⬇️ Download customer list (CSV)",
-            data=display_customers.to_csv(index=False).encode("utf-8-sig"),
-            file_name="shiva_traders_customers.csv",
-            mime="text/csv",
+      out = edited.copy()
+      out["Phone"] = out["Phone"].fillna("").astype(str).str.strip()
+      out["Opening_Balance"] = (
+          pd.to_numeric(out["Opening_Balance"], errors="coerce").fillna(0.0)
+      )
+      save_df(out, CUST_FILE)
+      flash_and_rerun("✅ ग्राहक सूची अपडेट हो गई!")
+
+
+def tab_print(tx, pay, cust, bal):
+  st.subheader("4. ग्राहक पर्ची व खाता प्रिंट")
+  if bal.empty:
+    st.info("प्रिंट करने के लिए कोई डाटा नहीं है।")
+    return
+
+  party = st.selectbox("ग्राहक चुनें:", list(bal["Customer"]), key="print_cust")
+  mode = st.radio(
+      "क्या प्रिंट करना है?",
+      ["पूरा खाता (Statement)", "सिर्फ़ एक बिल (Single Bill)"],
+      horizontal=True,
+      key="print_mode",
+  )
+
+  sales = tx[tx["Customer"] == party]
+  pays = pay[pay["Customer"] == party]
+  row = bal[bal["Customer"] == party].iloc[0]
+  opening, total_bill, total_paid, balance = (
+      row["Opening"],
+      row["Billed"],
+      row["Paid"],
+      row["Balance"],
+  )
+  profit_party = sales["Total_Profit"].sum()
+
+  m1, m2, m3, m4 = st.columns(4)
+  m1.metric("कुल बिल रकम", inr(total_bill))
+  m2.metric("कुल जमा किया", inr(total_paid))
+  m3.metric("🚨 कुल बकाया (Udhaar)", inr(balance))
+  m4.metric("📈 इस पार्टी से प्रॉफिट", inr(profit_party))
+  st.markdown("---")
+
+  if mode.startswith("पूरा"):
+    lines = []
+    if abs(opening) > 0.005:
+      lines.append(("पिछला बकाया (Opening)", inr(opening), "#000000"))
+    lines += [
+        ("कुल बिल रकम", inr(total_bill), "#000000"),
+        ("कुल जमा रकम", inr(total_paid), "#16a34a"),
+        ("🚨 कुल शेष बकाया", inr(balance), "#dc2626"),
+    ]
+    body = statement_body(party, sales, pays, lines, show_pays=True)
+    height = min(1500, 520 + 36 * (len(sales) + len(pays)))
+    file_name = f"{party}_khata_{date.today():%Y%m%d}.html"
+  else:
+    if sales.empty:
+      st.info("इस पार्टी का कोई बिल नहीं है।")
+      return
+    opts = {
+        r.Bill_ID: (
+            f"#{r.Bill_ID} | {r.Date} | {r.Variety} |"
+            f" {inr(r.Net_Bill_Amount)}"
         )
+        for r in sales.iloc[::-1].itertuples()
+    }
+    bid = st.selectbox(
+        "बिल चुनें:", list(opts), format_func=opts.get, key="print_bill"
+    )
+    one = sales[sales["Bill_ID"] == bid]
+    lines = [
+        (f"बिल #{bid} की रकम", inr(one["Net_Bill_Amount"].iloc[0]), "#1d4ed8"),
+        ("पार्टी का कुल बकाया (अब तक)", inr(balance), "#dc2626"),
+    ]
+    body = statement_body(party, one, pays, lines, show_pays=False)
+    height = 520
+    file_name = f"{party}_bill_{bid}.html"
 
-# ----------------------------- Payments -----------------------------
-with tab_payment:
-    st.subheader("Record a payment")
-    party_names = sorted(set(sales_df["Customer"].dropna().astype(str).tolist()) | set(payments_df["Customer"].dropna().astype(str).tolist()))
-    if not party_names:
-        st.info("Payment enter karne se pehle ek bill save karein ya customer add karein.")
-    else:
-        with st.form("payment_form", clear_on_submit=True):
-            selected_party = st.selectbox("Customer / party", party_names)
-            p1, p2 = st.columns(2)
-            with p1:
-                amount_paid = st.number_input("Amount received (₹)", min_value=1.0, value=1000.0, step=100.0)
-                payment_date = st.date_input("Payment date", value=date.today())
-            with p2:
-                payment_mode = st.selectbox("Payment method", ["Cash", "UPI / PhonePe", "Bank transfer", "Cheque", "Other"])
-                payment_note = st.text_input("Reference / note")
-            save_payment = st.form_submit_button("💾 Save payment", type="primary")
-        if save_payment:
-            payments_now = read_csv(PAYMENTS_FILE, PAYMENT_COLUMNS)
-            append_row(PAYMENTS_FILE, {
-                "Payment_ID": next_id("PAY", payments_now, "Payment_ID"),
-                "Date": f"{payment_date:%Y-%m-%d} {datetime.now():%H:%M}",
-                "Customer": selected_party, "Amount_Paid": amount_paid,
-                "Payment_Mode": payment_mode, "Remarks": payment_note,
-            }, PAYMENT_COLUMNS)
-            st.success(f"{money(amount_paid)} payment saved for {selected_party}. Reload to refresh balances.")
-    st.markdown("---")
-    st.markdown("#### Recent payments")
-    if payments_df.empty:
-        st.info("No payment entries yet.")
-    else:
-        recent_payments = payments_df.sort_values("Date", ascending=False).head(20)
-        st.dataframe(recent_payments, use_container_width=True, hide_index=True)
-        st.download_button("⬇️ Download payment history (CSV)", payments_df.to_csv(index=False).encode("utf-8-sig"), "shiva_traders_payments.csv", "text/csv")
+  page = html_page(body)
+  st.components.v1.html(page, height=height, scrolling=True)
 
-# ----------------------------- Party ledger -----------------------------
-with tab_ledger:
-    st.subheader("Party ledger & printable statement")
-    if balance_df.empty:
-        st.info("Ledger dikhane ke liye pehle bill ya payment entry karein.")
-    else:
-        party = st.selectbox("Select party", sorted(balance_df["Customer"].astype(str).tolist()), key="ledger_party")
-        row = balance_df[balance_df["Customer"] == party].iloc[0]
-        a, b, c = st.columns(3)
-        a.metric("Total billed", money(row["Total_Billed"]))
-        b.metric("Total received", money(row["Total_Paid"]))
-        c.metric("Balance", money(row["Balance"]), delta="Receivable" if row["Balance"] > 0 else ("Advance / credit" if row["Balance"] < 0 else "Settled"))
-        party_sales = sales_df[sales_df["Customer"].astype(str) == party].copy()
-        party_payments = payments_df[payments_df["Customer"].astype(str) == party].copy()
-        st.markdown("#### Bill history")
-        if party_sales.empty:
-            st.info("Is party ka bill history nahi hai.")
-        else:
-            cols = ["Bill_ID", "Date", "Variety", "Bags", "Weight_Kg", "Rate_Per_Kg", "Gross_Amount", "Commission_Amt", "Labour_Charges", "Net_Bill_Amount"]
-            st.dataframe(party_sales[cols], use_container_width=True, hide_index=True)
-        st.markdown("#### Payment history")
-        if party_payments.empty:
-            st.info("Is party ki payment entry nahi hai.")
-        else:
-            st.dataframe(party_payments[["Payment_ID", "Date", "Amount_Paid", "Payment_Mode", "Remarks"]], use_container_width=True, hide_index=True)
+  d1, d2 = st.columns(2)
+  d1.download_button(
+      "⬇️ HTML डाउनलोड (browser में खोलकर प्रिंट करें)",
+      page.encode("utf-8"),
+      file_name=file_name,
+      mime="text/html",
+      key="print_dl",
+  )
+  phone = phone_of(cust, party)
+  if balance > 0.005 and clean_phone(phone):
+    remind = (
+        f"🏢 *SHIVA TRADERS*\n\nनमस्ते {party} जी,\nआपका कुल बकाया"
+        f" *{inr(balance)}* है。\nकृपया जल्द जमा करें। धन्यवाद! 🙏"
+    )
+    d2.link_button("📲 बकाया याद दिलाएँ (WhatsApp)", wa_url(phone, remind))
 
-        # A print-friendly statement that safely escapes user-entered text.
-        sales_rows = ""
-        for _, r in party_sales.iterrows():
-            sales_rows += (
-                "<tr>"
-                f"<td>{safe_text(r['Bill_ID'])}</td><td>{safe_text(r['Date'])}</td>"
-                f"<td>{safe_text(r['Variety'])}</td><td>{float(r['Bags']):g}</td>"
-                f"<td>{float(r['Weight_Kg']):,.2f}</td><td>{money(r['Net_Bill_Amount'])}</td>"
-                "</tr>"
-            )
-        payment_rows = ""
-        for _, r in party_payments.iterrows():
-            payment_rows += (
-                "<tr>"
-                f"<td>{safe_text(r['Payment_ID'])}</td><td>{safe_text(r['Date'])}</td>"
-                f"<td>{money(r['Amount_Paid'])}</td><td>{safe_text(r['Payment_Mode'])}</td>"
-                "</tr>"
-            )
-        statement_html = f"""
-        <!doctype html><html><head><meta charset="utf-8"><style>
-        body{{font-family:Arial,sans-serif;color:#172033;padding:18px}}
-        .sheet{{max-width:1100px;margin:auto;border:2px solid #164e63;padding:22px;border-radius:10px}}
-        h1{{text-align:center;color:#164e63;margin-bottom:4px}} .sub{{text-align:center;color:#526277}}
-        .summary{{display:flex;gap:12px;margin:18px 0}} .box{{flex:1;background:#eef6fa;padding:12px;border-radius:8px}}
-        table{{width:100%;border-collapse:collapse;margin:12px 0 22px}}th,td{{border:1px solid #cbd5e1;padding:8px;text-align:left;font-size:12px}}
-        th{{background:#164e63;color:white}} .due{{font-size:20px;font-weight:bold;color:#b91c1c}}
-        button{{background:#047857;color:white;padding:10px 18px;border:0;border-radius:6px;font-weight:bold;cursor:pointer}}
-        @media print{{button{{display:none}}.sheet{{border:0}}}}
-        </style></head><body><div class="sheet">
-        <button onclick="window.print()">🖨️ Print / Save as PDF</button>
-        <h1>SHIVA TRADERS</h1><div class="sub">Party Account Statement • {datetime.now():%d-%m-%Y %I:%M %p}</div>
-        <h2>Customer: {safe_text(party)}</h2>
-        <div class="summary">
-          <div class="box"><b>Total billed</b><br>{money(row['Total_Billed'])}</div>
-          <div class="box"><b>Total received</b><br>{money(row['Total_Paid'])}</div>
-          <div class="box"><b>Balance</b><br><span class="due">{money(row['Balance'])}</span></div>
-        </div>
-        <h3>Bill history</h3><table><thead><tr><th>Bill ID</th><th>Date</th><th>Item</th><th>Bags</th><th>Weight kg</th><th>Net bill</th></tr></thead><tbody>{sales_rows or '<tr><td colspan="6">No bills</td></tr>'}</tbody></table>
-        <h3>Payment history</h3><table><thead><tr><th>Payment ID</th><th>Date</th><th>Amount</th><th>Method</th></tr></thead><tbody>{payment_rows or '<tr><td colspan="4">No payments</td></tr>'}</tbody></table>
-        <p>Thank you for doing business with Shiva Traders.</p></div></body></html>
-        """
-        st.components.v1.html(statement_html, height=650, scrolling=True)
-        statement_csv = pd.concat([
-            party_sales.assign(Record_Type="Bill").rename(columns={"Net_Bill_Amount": "Amount"})[
-                ["Record_Type", "Bill_ID", "Date", "Customer", "Amount", "Remarks"]
-            ],
-            party_payments.assign(Record_Type="Payment", Amount=party_payments["Amount_Paid"]).rename(columns={"Payment_ID": "Bill_ID"})[
-                ["Record_Type", "Bill_ID", "Date", "Customer", "Amount", "Remarks"]
-            ],
-        ], ignore_index=True)
-        st.download_button("⬇️ Download this party's ledger (CSV)", statement_csv.to_csv(index=False).encode("utf-8-sig"), f"{party}_ledger.csv", "text/csv")
 
-# ----------------------------- Reports and export -----------------------------
-with tab_reports:
-    st.subheader("Reports & data export")
-    st.markdown('<div class="section-note">Filter entries by date and download your records for backup or accounting.</div>', unsafe_allow_html=True)
-    if not sales_df.empty:
-        report = sales_df.copy()
-        report["DateParsed"] = pd.to_datetime(report["Date"], errors="coerce")
-        valid_dates = report["DateParsed"].dropna()
-        if not valid_dates.empty:
-            r1, r2 = st.columns(2)
-            with r1:
-                start_date = st.date_input("From date", value=valid_dates.min().date(), key="report_start")
-            with r2:
-                end_date = st.date_input("To date", value=valid_dates.max().date(), key="report_end")
-            if start_date > end_date:
-                st.error("From date should be earlier than or equal to To date.")
-                filtered = report.iloc[0:0].copy()
-            else:
-                filtered = report[
-                    (report["DateParsed"].dt.date >= start_date) &
-                    (report["DateParsed"].dt.date <= end_date)
-                ].copy()
-        else:
-            filtered = report
-        f1, f2, f3 = st.columns(3)
-        f1.metric("Bills in range", len(filtered))
-        f2.metric("Billed in range", money(filtered["Net_Bill_Amount"].sum()))
-        f3.metric("Profit in range", money(filtered["Total_Profit"].sum()))
-        st.dataframe(filtered.drop(columns=["DateParsed"], errors="ignore"), use_container_width=True, hide_index=True)
-        st.download_button(
-            "⬇️ Download filtered bills (CSV)",
-            data=filtered.drop(columns=["DateParsed"], errors="ignore").to_csv(index=False).encode("utf-8-sig"),
-            file_name="shiva_traders_filtered_bills.csv",
-            mime="text/csv",
-        )
-    else:
-        st.info("Report banane ke liye pehle bill entries add karein.")
+def tab_register(tx, pay, bal):
+  st.subheader("5. Shiva Traders खाता रजिस्टर (Summary)")
+  if tx.empty:
+    st.info("रजिस्टर में दिखाने के लिए अभी कोई डेटा नहीं है।")
+    return
 
-    st.markdown("---")
-    st.markdown("#### Full backup")
-    st.caption("Download all three files and keep them somewhere safe. CSV files contain your business records.")
-    d1, d2, d3 = st.columns(3)
-    d1.download_button("📦 Sales CSV", sales_df.to_csv(index=False).encode("utf-8-sig"), "mandi_commission_sales.csv", "text/csv", use_container_width=True)
-    d2.download_button("💵 Payments CSV", payments_df.to_csv(index=False).encode("utf-8-sig"), "mandi_payments.csv", "text/csv", use_container_width=True)
-    d3.download_button("👥 Customers CSV", customers_df.to_csv(index=False).encode("utf-8-sig"), "customers_list.csv", "text/csv", use_container_width=True)
+  dt = pd.to_datetime(tx["Date"], errors="coerce")
+  first = dt.min().date() if dt.notna().any() else date.today()
+  rng = st.date_input(
+      "तारीख से — तक:", value=(first, date.today()), key="reg_range"
+  )
+  if not (isinstance(rng, (tuple, list)) and len(rng) == 2):
+    st.info("कृपया शुरू और आख़िरी दोनों तारीख चुनें।")
+    return
+  d1, d2 = pd.Timestamp(rng[0]), pd.Timestamp(rng[1])
 
-st.markdown("---")
-st.markdown(
-    '<div style="text-align:center;color:#718096;font-size:12px;padding:4px 0 16px">'
-    'SHIVA TRADERS • Billing & Accounts • Built for simple day-to-day bookkeeping</div>',
-    unsafe_allow_html=True,
-)
+  def in_range(frame):
+    d = pd.to_datetime(frame["Date"], errors="coerce").dt.normalize()
+    return frame[(d >= d1) & (d <= d2)]
+
+  txp, payp = in_range(tx), in_range(pay)
+  g_tx = txp.groupby("Customer").agg(
+      Bags=("Bags", "sum"),
+      Weight=("Weight_Kg", "sum"),
+      Gross=("Gross_Amount", "sum"),
+      Comm=("Commission_Amt", "sum"),
+      Labour=("Labour_Charges", "sum"),
+      Profit=("Total_Profit", "sum"),
+      Bill=("Net_Bill_Amount", "sum"),
+  )
+  g_pay = payp.groupby("Customer")["Amount_Paid"].sum().rename("Paid")
+  reg = g_tx.join(g_pay, how="outer").fillna(0.0)
+  reg.index.name = "Customer"
+  reg = (
+      reg.reset_index()
+      .merge(bal[["Customer", "Balance"]], on="Customer", how="left")
+      .fillna(0.0)
+  )
+
+  if reg.empty:
+    st.info("इस अवधि में कोई एंट्री नहीं है।")
+    return
+
+  reg = reg.sort_values("Bill", ascending=False).reset_index(drop=True)
+  totals = {k: reg[k].sum() for k, _, kind in REG_COLS if kind != "t"}
+  reg = pd.concat(
+      [reg, pd.DataFrame([{"Customer": "GRAND TOTAL", **totals}])],
+      ignore_index=True,
+  )
+
+  k1, k2, k3, k4 = st.columns(4)
+  k1.metric("कुल बिक्री", inr(totals["Bill"]))
+  k2.metric("कुल प्रॉफिट", inr(totals["Profit"]))
+  k3.metric("कुल वसूली", inr(totals["Paid"]))
+  k4.metric(
+      "🚨 कुल बकाया (अब तक)",
+      inr(bal.loc[bal["Balance"] > 0, "Balance"].sum()),
+  )
+
+  label_map = {k: lbl for k, lbl, _ in REG_COLS}
+  cfg = {
+      lbl: st.column_config.NumberColumn(lbl, format="₹ %.2f")
+      for k, lbl, kind in REG_COLS
+      if kind == "m"
+  }
+  st.dataframe(
+      reg.rename(columns=label_map),
+      hide_index=True,
+      column_config=cfg,
+      **STRETCH,
+  )
+
+  period = f"{rng[0]:%d-%m-%Y} से {rng[1]:%d-%m-%Y}"
+  page = html_page(register_body(reg, period))
+  a, b = st.columns(2)
+  a.download_button(
+      "⬇️ Excel/CSV डाउनलोड",
+      reg.rename(columns=label_map).to_csv(index=False).encode("utf-8-sig"),
+      file_name=f"register_{date.today():%Y%m%d}.csv",
+      mime="text/csv",
+      key="reg_csv",
+  )
+  b.download_button(
+      "🖨️ प्रिंट वाला रजिस्टर (HTML)",
+      page.encode("utf-8"),
+      file_name=f"register_{date.today():%Y%m%d}.html",
+      mime="text/html",
+      key="reg_print",
+  )
+
+
+def tab_backup():
+  st.subheader("6. बैकअप और डेटा सुरक्षा")
+  st.markdown(
+      "यहाँ से आप अपना पूरा डेटा (बिल, पेमेंट्स, कस्टमर लिस्ट) सुरक्षित रूप से"
+      " डाउनलोड कर सकते हैं।"
+  )
+
+  zip_bytes = backup_zip()
+  st.download_button(
+      "📦 सभी CSV फाइल्स का ZIP डाउनलोड करें",
+      zip_bytes,
+      file_name=f"shiva_traders_backup_{date.today():%Y%m%d}.zip",
+      mime="application/zip",
+      type="primary",
+  )
+
+
+# ======================================================================
+# MAIN
+# ======================================================================
+def main():
+  tx = load_tx()
+  pay = load_pay()
+  cust = load_cust()
+  bal = balances(tx, pay, cust)
+
+  st.title("🏢 SHIVA TRADERS")
+  st.markdown(
+      "<p style='color:#9ca3af;font-size:16px;margin-top:-10px;margin-bottom:20px'>Professional"
+      " Mandi Commission & Billing Dashboard</p>",
+      unsafe_allow_html=True,
+  )
+
+  flash = st.session_state.pop("flash", None)
+  if flash:
+    st.success(flash["msg"])
+    if flash["wa"]:
+      st.link_button(flash["wa_label"], flash["wa"])
+
+  t1, t2, t3, t4, t5, t6, t7 = st.tabs([
+      "📊 डैशबोर्ड",
+      "📑 नया बिल",
+      "💵 जमा पैसा",
+      "👥 ग्राहक सूची",
+      "🖨️ पर्ची प्रिंट",
+      "📋 रजिस्टर",
+      "💾 बैकअप",
+  ])
+
+  with t1:
+    tab_dashboard(tx, pay, bal)
+  with t2:
+    tab_new_bill(tx, pay, cust, bal)
+  with t3:
+    tab_payment(bal)
+  with t4:
+    tab_customers(cust, bal)
+  with t5:
+    tab_print(tx, pay, cust, bal)
+  with t6:
+    tab_register(tx, pay, bal)
+  with t7:
+    tab_backup()
+
+
+if __name__ == "__main__":
+  main()
