@@ -9,43 +9,43 @@ st.set_page_config(
     page_title="Shiva Traders | Billing & Accounting", page_icon="🏢", layout="wide"
 )
 
-# Professional Dashboard with Smooth Animations & Premium Colors
+# Royal Emerald & Gold Theme with Smooth Animations
 st.markdown(
     """
     <style>
-    /* Main Background & Animations */
-    .stApp { background-color: #090d16 !important; color: #f1f5f9 !important; overscroll-behavior-y: none !important; animation: fadeIn 0.6s ease-in-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    /* Rich Dark Charcoal Background & Entrance Animation */
+    .stApp { background-color: #121824 !important; color: #f3f4f6 !important; overscroll-behavior-y: none !important; animation: fadeIn 0.5s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     
     html, body { overscroll-behavior-y: none !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     
-    /* Headers & Glowing Titles */
-    h1, h2, h3, h4 { color: #38bdf8 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
-    .stSubheader { color: #38bdf8 !important; border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 20px; }
+    /* Headers & Gold Highlights */
+    h1, h2, h3, h4 { color: #f59e0b !important; font-weight: 800 !important; letter-spacing: -0.5px; }
+    .stSubheader { color: #f59e0b !important; border-bottom: 2px solid #1f2937; padding-bottom: 8px; margin-bottom: 20px; }
     
     /* Labels & Text */
-    label, label p, div[data-testid="stMarkdownContainer"] p { color: #e2e8f0 !important; font-size: 15px !important; font-weight: 600 !important; }
+    label, label p, div[data-testid="stMarkdownContainer"] p { color: #e5e7eb !important; font-size: 15px !important; font-weight: 600 !important; }
     
-    /* Input Fields Styling with Smooth Focus Glow */
-    input, select, textarea { color: #ffffff !important; background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 8px !important; padding: 10px !important; transition: all 0.3s ease !important; }
-    input:focus, select:focus { border-color: #38bdf8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important; background-color: #1f2937 !important; }
+    /* Input Fields Styling with Gold Focus Glow */
+    input, select, textarea { color: #ffffff !important; background-color: #1a2234 !important; border: 1px solid #374151 !important; border-radius: 8px !important; padding: 10px !important; transition: all 0.3s ease !important; }
+    input:focus, select:focus { border-color: #f59e0b !important; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important; background-color: #222b42 !important; }
     
     /* Tabs Styling with Hover Effects */
-    button[data-baseweb="tab"] { background-color: #111827 !important; border-radius: 8px !important; padding: 10px 20px !important; margin-right: 8px !important; border: 1px solid #374151 !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    button[data-baseweb="tab"]:hover { background-color: #1f2937 !important; border-color: #38bdf8 !important; transform: translateY(-2px); }
+    button[data-baseweb="tab"] { background-color: #1a2234 !important; border-radius: 8px !important; padding: 10px 20px !important; margin-right: 8px !important; border: 1px solid #374151 !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    button[data-baseweb="tab"]:hover { background-color: #222b42 !important; border-color: #f59e0b !important; transform: translateY(-2px); }
     button[data-baseweb="tab"] p { color: #9ca3af !important; font-weight: 700 !important; font-size: 14px !important; }
-    button[data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important; border: 1px solid #60a5fa !important; box-shadow: 0 6px 15px rgba(59, 130, 246, 0.5); }
+    button[data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #059669, #047857) !important; border: 1px solid #10b981 !important; box-shadow: 0 6px 15px rgba(5, 150, 105, 0.4); }
     button[data-baseweb="tab"][aria-selected="true"] p { color: #ffffff !important; }
     
-    /* Animated Metrics Cards */
-    [data-testid="stMetric"] { background: linear-gradient(145deg, #111827, #1f2937) !important; border: 1px solid #374151 !important; padding: 16px !important; border-radius: 12px !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-    [data-testid="stMetric"]:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
+    /* Animated Metric Cards with Emerald/Gold Borders */
+    [data-testid="stMetric"] { background: linear-gradient(145deg, #1a2234, #222b42) !important; border: 1px solid #374151 !important; padding: 16px !important; border-radius: 12px !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    [data-testid="stMetric"]:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(245, 158, 11, 0.2); border-color: #f59e0b; }
     [data-testid="stMetricLabel"] p { color: #9ca3af !important; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.8px; }
-    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-weight: 800 !important; font-size: 24px !important; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+    [data-testid="stMetricValue"] { color: #f59e0b !important; font-weight: 800 !important; font-size: 24px !important; text-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
     
-    /* Buttons with Glow & Hover Animation */
-    .stButton>button { background: linear-gradient(135deg, #10b981, #047857) !important; color: white !important; font-weight: 700 !important; border-radius: 8px !important; padding: 10px 24px !important; border: none !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
-    .stButton>button:hover { background: linear-gradient(135deg, #059669, #065f46) !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.7); transform: translateY(-3px) scale(1.02); }
+    /* Rich Emerald Action Buttons */
+    .stButton>button { background: linear-gradient(135deg, #059669, #065f46) !important; color: white !important; font-weight: 700 !important; border-radius: 8px !important; padding: 10px 24px !important; border: none !important; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+    .stButton>button:hover { background: linear-gradient(135deg, #047857, #064e3b) !important; box-shadow: 0 8px 25px rgba(5, 150, 105, 0.7); transform: translateY(-3px) scale(1.02); }
     </style>
 """,
     unsafe_allow_html=True,
@@ -88,7 +88,7 @@ if not os.path.exists(CUSTOMERS_FILE):
 
 st.title("🏢 SHIVA TRADERS")
 st.markdown(
-    "<p style='color: #94a3b8; font-size: 16px; margin-top: -10px; margin-bottom:"
+    "<p style='color: #9ca3af; font-size: 16px; margin-top: -10px; margin-bottom:"
     " 25px;'>Professional Mandi Commission & Billing Dashboard</p>",
     unsafe_allow_html=True,
 )
