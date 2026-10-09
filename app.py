@@ -299,6 +299,15 @@ def flash_and_rerun(
   st.rerun()
 
 
+def backup_zip() -> bytes:
+  buf = io.BytesIO()
+  with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+    for p in (TX_FILE, PAY_FILE, CUST_FILE):
+      if p.exists():
+        z.write(p, p.name)
+  return buf.getvalue()
+
+
 # ======================================================================
 # PRINT / HTML BUILDERS
 # ======================================================================
