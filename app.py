@@ -402,7 +402,7 @@ def flash_and_rerun(
 
 
 # ======================================================================
-# PRINT / HTML BUILDERS
+# PRINT / HTML BUILDERS (With Satyanarayan Signature)
 # ======================================================================
 PRINT_CSS = """
 body{font-family:Arial,sans-serif;padding:10px;color:#0f172a;background:#fff}
@@ -417,6 +417,10 @@ tbody tr:nth-child(even){background:#f1f5f9}
 tr.grand td{background:#0f172a;color:#fde047;font-weight:bold}
 .totals{margin-top:15px;padding:12px;background:#fefce8;border-radius:8px;border-left:6px solid #f59e0b;font-size:16px;font-weight:bold;text-align:right}
 .totals p{margin:4px 0}
+.signature-section{margin-top:35px;display:flex;justify-content:space-between;align-items:flex-end;padding-top:15px}
+.sign-box{text-align:right;width:220px}
+.sign-name{font-size:20px;font-weight:bold;color:#1e3a8a;font-family:'Brush Script MT', cursive, serif;margin-bottom:2px}
+.sign-label{font-size:13px;color:#475569;border-top:1px solid #94a3b8;padding-top:4px}
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.card{animation:up .6s ease-out}
 .btn{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:bold;margin-bottom:15px}
 @media print{.btn{display:none}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -477,7 +481,11 @@ def statement_body(
       "<th>वजन</th><th>रेट</th><th>मूल"
       " रकम</th><th>कमीशन</th><th>मजदूरी</th><th>कुल बिल</th></tr></thead>"
       f"<tbody>{s_rows}</tbody></table>{pay_html}<div"
-      f" class='totals'>{totals}</div></div>"
+      f" class='totals'>{totals}</div>"
+      "<div class='signature-section'><div></div>"
+      "<div class='sign-box'><div"
+      " class='sign-name'>सत्यनारायण</div><div class='sign-label'>For SHIVA"
+      " TRADERS<br>Authorized Signatory</div></div></div></div>"
   )
 
 
@@ -512,7 +520,11 @@ def register_body(reg: pd.DataFrame, period: str) -> str:
       "<div class='card'><div class='title'>SHIVA TRADERS</div>"
       f"<p style='text-align:right;font-size:13px;color:#475569'><b>अवधि:</b>"
       f" {e(period)} &nbsp; <b>Report:</b> {datetime.now():%d-%m-%Y %H:%M}</p>"
-      f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table></div>"
+      f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table>"
+      "<div class='signature-section'><div></div>"
+      "<div class='sign-box'><div"
+      " class='sign-name'>सत्यनारायण</div><div class='sign-label'>For SHIVA"
+      " TRADERS<br>Authorized Signatory</div></div></div></div>"
   )
 
 
