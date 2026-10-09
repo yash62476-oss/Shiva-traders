@@ -5,10 +5,12 @@ Run:  streamlit run shiva_traders_app.py
 
 from __future__ import annotations
 
+import hmac
 import html
 import io
 import os
 import shutil
+import time
 import urllib.parse
 import zipfile
 from datetime import date, datetime, timedelta
@@ -825,6 +827,51 @@ def tab_manage(tx, pay):
                        mime="application/zip", key="mg_zip")
 
 
+
+# ======================================================================
+# PIN LOCK
+# ======================================================================
+MAX_TRIES = 5
+LOCK_SECONDS = 60
+
+
+def get_app_pin() -> tuple[str, bool]:
+    """PIN from .streamlit/secrets.toml (APP_PIN) or env var APP_PIN; else default 1234."""
+    try:
+        pin = str(st.secrets.get("APP_PIN", "") or "")
+    except Exception:
+        pin = ""
+    pin = pin or os.environ.get("APP_PIN", "")
+    return (pin, False) if pin else ("1234", True)
+
+
+def require_login() -> None:
+    if st.session_state.get("authed"):
+        return
+    pin, _ = get_app_pin()
+    wait = st.session_state.get("locked_until", 0) - time.time()
+
+    st.markdown("### 🔒 Shiva Traders — PIN डालें")
+    if wait > 0:
+        st.error(f"बहुत ज़्यादा गलत कोशिशें। {int(wait) + 1} सेकंड बाद दोबारा try करें।")
+    with st.form("login_form"):
+        entered = st.text_input("PIN:", type="password")
+        go = st.form_submit_button("🔓 खोलें", type="primary")
+    if go and wait <= 0:
+        if hmac.compare_digest(entered.encode(), pin.encode()):
+            st.session_state["authed"] = True
+            st.session_state["fails"] = 0
+            st.rerun()
+        else:
+            st.session_state["fails"] = st.session_state.get("fails", 0) + 1
+            left = MAX_TRIES - st.session_state["fails"]
+            if left <= 0:
+                st.session_state["locked_until"] = time.time() + LOCK_SECONDS
+                st.session_state["fails"] = 0
+                st.rerun()
+            st.error(f"❌ गलत PIN! ({left} कोशिशें बाकी)")
+    st.stop()
+
 # ======================================================================
 # MAIN
 # ======================================================================
@@ -834,6 +881,15 @@ st.markdown(
     "Professional Mandi Commission & Billing Dashboard</p>",
     unsafe_allow_html=True,
 )
+
+require_login()
+
+top_l, top_r = st.columns([6, 1])
+if get_app_pin()[1]:
+    top_l.warning("⚠️ अभी default PIN (1234) चल रहा है — नीचे बताए तरीके से अपना PIN सेट करें।")
+if top_r.button("🔒 Lock", key="lock_btn"):
+    st.session_state["authed"] = False
+    st.rerun()
 
 flash = st.session_state.pop("flash", None)
 if flash:
@@ -868,4 +924,3 @@ with tabs[5]:
     tab_register(TX, PAY, BAL)
 with tabs[6]:
     tab_manage(TX, PAY)
-    
