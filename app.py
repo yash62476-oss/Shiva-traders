@@ -9,39 +9,43 @@ st.set_page_config(
     page_title="Shiva Traders | Billing & Accounting", page_icon="🏢", layout="wide"
 )
 
-# Professional & Attractive Modern Dashboard Styling
+# Professional Dashboard with Smooth Animations & Premium Colors
 st.markdown(
     """
     <style>
-    /* Main Background & Font */
-    .stApp { background-color: #0b0f19 !important; color: #f8fafc !important; overscroll-behavior-y: none !important; }
+    /* Main Background & Animations */
+    .stApp { background-color: #090d16 !important; color: #f1f5f9 !important; overscroll-behavior-y: none !important; animation: fadeIn 0.6s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    
     html, body { overscroll-behavior-y: none !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     
-    /* Headers & Subheaders */
+    /* Headers & Glowing Titles */
     h1, h2, h3, h4 { color: #38bdf8 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
     .stSubheader { color: #38bdf8 !important; border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 20px; }
     
     /* Labels & Text */
     label, label p, div[data-testid="stMarkdownContainer"] p { color: #e2e8f0 !important; font-size: 15px !important; font-weight: 600 !important; }
     
-    /* Input Fields Styling */
-    input, select, textarea { color: #ffffff !important; background-color: #1e293b !important; border: 1px solid #475569 !important; border-radius: 8px !important; padding: 10px !important; }
-    input:focus { border-color: #38bdf8 !important; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+    /* Input Fields Styling with Smooth Focus Glow */
+    input, select, textarea { color: #ffffff !important; background-color: #111827 !important; border: 1px solid #374151 !important; border-radius: 8px !important; padding: 10px !important; transition: all 0.3s ease !important; }
+    input:focus, select:focus { border-color: #38bdf8 !important; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4) !important; background-color: #1f2937 !important; }
     
-    /* Tabs Styling */
-    button[data-baseweb="tab"] { background-color: #1e293b !important; border-radius: 8px !important; padding: 10px 20px !important; margin-right: 8px !important; border: 1px solid #334155 !important; transition: all 0.3s ease; }
-    button[data-baseweb="tab"] p { color: #cbd5e1 !important; font-weight: 700 !important; font-size: 14px !important; }
-    button[data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border: 1px solid #60a5fa !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+    /* Tabs Styling with Hover Effects */
+    button[data-baseweb="tab"] { background-color: #111827 !important; border-radius: 8px !important; padding: 10px 20px !important; margin-right: 8px !important; border: 1px solid #374151 !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    button[data-baseweb="tab"]:hover { background-color: #1f2937 !important; border-color: #38bdf8 !important; transform: translateY(-2px); }
+    button[data-baseweb="tab"] p { color: #9ca3af !important; font-weight: 700 !important; font-size: 14px !important; }
+    button[data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important; border: 1px solid #60a5fa !important; box-shadow: 0 6px 15px rgba(59, 130, 246, 0.5); }
     button[data-baseweb="tab"][aria-selected="true"] p { color: #ffffff !important; }
     
-    /* Metrics Cards */
-    [data-testid="stMetric"] { background-color: #1e293b !important; border: 1px solid #334155 !important; padding: 15px !important; border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
-    [data-testid="stMetricLabel"] p { color: #94a3b8 !important; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.5px; }
-    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-weight: 800 !important; font-size: 24px !important; }
+    /* Animated Metrics Cards */
+    [data-testid="stMetric"] { background: linear-gradient(145deg, #111827, #1f2937) !important; border: 1px solid #374151 !important; padding: 16px !important; border-radius: 12px !important; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    [data-testid="stMetric"]:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
+    [data-testid="stMetricLabel"] p { color: #9ca3af !important; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.8px; }
+    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-weight: 800 !important; font-size: 24px !important; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
     
-    /* Buttons Styling */
-    .stButton>button { background: linear-gradient(135deg, #10b981, #059669) !important; color: white !important; font-weight: 700 !important; border-radius: 8px !important; padding: 10px 24px !important; border: none !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s ease; }
-    .stButton>button:hover { background: linear-gradient(135deg, #059669, #047857) !important; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5); transform: translateY(-1px); }
+    /* Buttons with Glow & Hover Animation */
+    .stButton>button { background: linear-gradient(135deg, #10b981, #047857) !important; color: white !important; font-weight: 700 !important; border-radius: 8px !important; padding: 10px 24px !important; border: none !important; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; }
+    .stButton>button:hover { background: linear-gradient(135deg, #059669, #065f46) !important; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.7); transform: translateY(-3px) scale(1.02); }
     </style>
 """,
     unsafe_allow_html=True,
@@ -98,7 +102,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ==========================================
-# TAB 1: NEW BILL (साथ में Front Payment Option)
+# TAB 1: NEW BILL
 # ==========================================
 with tab1:
   st.subheader("1. नया बिल और आढ़त entries")
