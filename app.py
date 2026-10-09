@@ -5,23 +5,43 @@ import pandas as pd
 import streamlit as st
 
 # Page Configuration
-st.set_page_config(page_title="Shiva Traders", page_icon="🏢", layout="wide")
+st.set_page_config(
+    page_title="Shiva Traders | Billing & Accounting", page_icon="🏢", layout="wide"
+)
 
-# High-Contrast Styling & Mobile Scroll/Refresh Fix
+# Professional & Attractive Modern Dashboard Styling
 st.markdown(
     """
     <style>
-    .stApp { background-color: #0f172a !important; color: #ffffff !important; overscroll-behavior-y: none !important; }
-    html, body { overscroll-behavior-y: none !important; }
-    label, label p, div[data-testid="stMarkdownContainer"] p { color: #ffffff !important; font-size: 16px !important; font-weight: 700 !important; }
-    h1, h2, h3, h4, .stSubheader { color: #38bdf8 !important; font-weight: 800 !important; }
-    input { color: #ffffff !important; background-color: #1e293b !important; border: 1px solid #64748b !important; border-radius: 6px !important; }
-    button[data-baseweb="tab"] { background-color: #334155 !important; border-radius: 8px !important; padding: 10px 18px !important; margin-right: 6px !important; }
-    button[data-baseweb="tab"] p { color: #f8fafc !important; font-weight: bold !important; font-size: 15px !important; }
-    button[data-baseweb="tab"][aria-selected="true"] { background: #2563eb !important; }
+    /* Main Background & Font */
+    .stApp { background-color: #0b0f19 !important; color: #f8fafc !important; overscroll-behavior-y: none !important; }
+    html, body { overscroll-behavior-y: none !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    /* Headers & Subheaders */
+    h1, h2, h3, h4 { color: #38bdf8 !important; font-weight: 800 !important; letter-spacing: -0.5px; }
+    .stSubheader { color: #38bdf8 !important; border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 20px; }
+    
+    /* Labels & Text */
+    label, label p, div[data-testid="stMarkdownContainer"] p { color: #e2e8f0 !important; font-size: 15px !important; font-weight: 600 !important; }
+    
+    /* Input Fields Styling */
+    input, select, textarea { color: #ffffff !important; background-color: #1e293b !important; border: 1px solid #475569 !important; border-radius: 8px !important; padding: 10px !important; }
+    input:focus { border-color: #38bdf8 !important; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+    
+    /* Tabs Styling */
+    button[data-baseweb="tab"] { background-color: #1e293b !important; border-radius: 8px !important; padding: 10px 20px !important; margin-right: 8px !important; border: 1px solid #334155 !important; transition: all 0.3s ease; }
+    button[data-baseweb="tab"] p { color: #cbd5e1 !important; font-weight: 700 !important; font-size: 14px !important; }
+    button[data-baseweb="tab"][aria-selected="true"] { background: linear-gradient(135deg, #2563eb, #1d4ed8) !important; border: 1px solid #60a5fa !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
     button[data-baseweb="tab"][aria-selected="true"] p { color: #ffffff !important; }
-    [data-testid="stMetricLabel"] p { color: #cbd5e1 !important; }
-    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-weight: 800 !important; }
+    
+    /* Metrics Cards */
+    [data-testid="stMetric"] { background-color: #1e293b !important; border: 1px solid #334155 !important; padding: 15px !important; border-radius: 12px !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+    [data-testid="stMetricLabel"] p { color: #94a3b8 !important; font-size: 13px !important; text-transform: uppercase; letter-spacing: 0.5px; }
+    [data-testid="stMetricValue"] { color: #38bdf8 !important; font-weight: 800 !important; font-size: 24px !important; }
+    
+    /* Buttons Styling */
+    .stButton>button { background: linear-gradient(135deg, #10b981, #059669) !important; color: white !important; font-weight: 700 !important; border-radius: 8px !important; padding: 10px 24px !important; border: none !important; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.3s ease; }
+    .stButton>button:hover { background: linear-gradient(135deg, #059669, #047857) !important; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5); transform: translateY(-1px); }
     </style>
 """,
     unsafe_allow_html=True,
@@ -63,6 +83,11 @@ if not os.path.exists(CUSTOMERS_FILE):
   )
 
 st.title("🏢 SHIVA TRADERS")
+st.markdown(
+    "<p style='color: #94a3b8; font-size: 16px; margin-top: -10px; margin-bottom:"
+    " 25px;'>Professional Mandi Commission & Billing Dashboard</p>",
+    unsafe_allow_html=True,
+)
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📑 नया बिल (New Bill)",
@@ -148,7 +173,6 @@ with tab1:
   st.markdown("---")
   st.subheader("📊 हिसाब-किताब breakdown & Front Payment:")
 
-  # FRONT PAYMENT OPTION (Bill ke sath hi paise jama karne ke liye)
   p_col1, p_col2 = st.columns(2)
   with p_col1:
     instant_pay = st.number_input(
@@ -175,7 +199,6 @@ with tab1:
     if not cust_name:
       st.error("कृपया ग्राहक का नाम भरें!")
     else:
-      # 1. Save Transaction
       new_data = pd.DataFrame([{
           "Date": datetime.now().strftime("%Y-%m-%d %H:%M"),
           "Customer": cust_name,
@@ -194,7 +217,6 @@ with tab1:
       }])
       new_data.to_csv(TRANSACTIONS_FILE, mode="a", header=False, index=False)
 
-      # 2. Save Instant Payment if amount > 0
       if instant_pay > 0:
         new_pay = pd.DataFrame([{
             "Date": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -205,7 +227,6 @@ with tab1:
         }])
         new_pay.to_csv(PAYMENTS_FILE, mode="a", header=False, index=False)
 
-      # 3. Add to Customer Master List if new
       if cust_name not in saved_customers:
         new_cust_df = pd.DataFrame(
             [{"Customer_Name": cust_name, "Phone": cust_phone}]
@@ -236,7 +257,7 @@ with tab2:
   new_c_name = st.text_input("ग्राहक का पूरा नाम:").strip()
   new_c_phone = st.text_input("मोबाइल नंबर (WhatsApp):").strip()
 
-  if st.button("ग्राहक सेव करें", type="primary"):
+  if st.button("ग्राहक सेव करें", type="primary", key="save_cust_btn"):
     if not new_c_name:
       st.error("कृपया ग्राहक का नाम दर्ज करें!")
     else:
