@@ -1,28 +1,4 @@
-from __future__ import annotations
 
-import html
-import io
-import os
-import shutil
-import urllib.parse
-import zipfile
-from datetime import date, datetime, timedelta
-from pathlib import Path
-
-import pandas as pd
-import streamlit as st
-
-# ======================================================================
-# PERMANENT DATA SERVER FOLDER
-# ======================================================================
-DATA_DIR = Path("C:/ShivaTraders_Data")
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-TX_FILE = DATA_DIR / "mandi_commission_sales.csv"
-PAY_FILE = DATA_DIR / "mandi_payments.csv"
-CUST_FILE = DATA_DIR / "customers_list.csv"
-BACKUP_DIR = DATA_DIR / "backups"
-BACKUP_DIR.mkdir(exist_ok=True)
 """
 SHIVA TRADERS - Mandi Commission Billing & Accounting
 Run:  streamlit run shiva_traders_app.py
