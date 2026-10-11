@@ -1,3 +1,22 @@
+from pathlib import Path
+import os
+
+# ======================================================================
+# PERMANENT DATA SERVER FOLDER (Data kabhi nahi udega)
+# ======================================================================
+# Yeh computer ke C drive mein ek permanent folder bana dega jahan saara data safe rahega
+DATA_DIR = Path("C:/ShivaTraders_Data")
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+TX_FILE = DATA_DIR / "mandi_commission_sales.csv"
+PAY_FILE = DATA_DIR / "mandi_payments.csv"
+CUST_FILE = DATA_DIR / "customers_list.csv"
+BACKUP_DIR = DATA_DIR / "backups"
+BACKUP_DIR.mkdir(exist_ok=True)
+
+
+
+
 """
 SHIVA TRADERS - Mandi Commission Billing & Accounting
 Run:  streamlit run shiva_traders_app.py
