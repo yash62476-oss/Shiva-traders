@@ -13,7 +13,7 @@ import pandas as pd
 import streamlit as st
 
 # ======================================================================
-# PERMANENT DATA SERVER FOLDER (Data kabhi nahi udega)
+# PERMANENT DATA SERVER FOLDER
 # ======================================================================
 DATA_DIR = Path("C:/ShivaTraders_Data")
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,13 +23,6 @@ PAY_FILE = DATA_DIR / "mandi_payments.csv"
 CUST_FILE = DATA_DIR / "customers_list.csv"
 BACKUP_DIR = DATA_DIR / "backups"
 BACKUP_DIR.mkdir(exist_ok=True)
-
-# ======================================================================
-# PAGE CONFIG & THEME
-# ======================================================================
-st.set_page_config(
-    page_title="Shiva Traders | Billing & Accounting", page_icon="🏢", layout="wide"
-)
 """
 SHIVA TRADERS - Mandi Commission Billing & Accounting
 Run:  streamlit run shiva_traders_app.py
